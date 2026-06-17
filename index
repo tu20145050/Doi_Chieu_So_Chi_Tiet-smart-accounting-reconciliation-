@@ -4,6 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Đối chiếu sổ chi tiết V4.9.1</title>
+<script>
+(function(){
+  const HASH='65a086cd9f5e1676af514e71f43fcb5675abc3c11c4ea92f93b1c2f15ab136af';
+  async function sha256(str){
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  function showLock(){
+    document.documentElement.style.overflow='hidden';
+    const el=document.createElement('div');
+    el.id='lock-screen';
+    el.innerHTML=`
+      <style>
+        #lock-screen{position:fixed;inset:0;z-index:99999;background:#f5f5f3;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+        #lock-box{background:#fff;border:1px solid #e8e8e0;border-radius:16px;padding:2.5rem 2rem;width:340px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+        #lock-box .lock-icon{font-size:40px;margin-bottom:1rem}
+        #lock-box h2{font-size:17px;font-weight:600;color:#1a1a1a;margin-bottom:.35rem}
+        #lock-box p{font-size:13px;color:#888;margin-bottom:1.5rem}
+        #lock-pass{width:100%;padding:10px 14px;border:1px solid #d0d0c8;border-radius:8px;font-size:14px;outline:none;transition:border .15s;margin-bottom:.75rem;font-family:inherit}
+        #lock-pass:focus{border-color:#1D9E75}
+        #lock-btn{width:100%;padding:10px;background:#1D9E75;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:background .15s}
+        #lock-btn:hover{background:#0F6E56}
+        #lock-err{font-size:12px;color:#e53935;margin-top:.5rem;min-height:18px}
+      </style>
+      <div id="lock-box">
+        <div class="lock-icon">🔒</div>
+        <h2>Đối chiếu sổ chi tiết</h2>
+        <p>Vui lòng nhập mật khẩu để truy cập</p>
+        <input id="lock-pass" type="password" placeholder="Nhập mật khẩu..." autofocus/>
+        <button id="lock-btn">Đăng nhập</button>
+        <div id="lock-err"></div>
+      </div>`;
+    document.body.appendChild(el);
+    async function tryUnlock(){
+      const val=document.getElementById('lock-pass').value;
+      const h=await sha256(val);
+      if(h===HASH){
+        el.remove();
+        document.documentElement.style.overflow='';
+      } else {
+        document.getElementById('lock-err').textContent='Mật khẩu không đúng, vui lòng thử lại.';
+        document.getElementById('lock-pass').value='';
+        document.getElementById('lock-pass').focus();
+      }
+    }
+    document.getElementById('lock-btn').onclick=tryUnlock;
+    document.getElementById('lock-pass').onkeydown=e=>{if(e.key==='Enter')tryUnlock();};
+  }
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',showLock);}
+  else{showLock();}
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
