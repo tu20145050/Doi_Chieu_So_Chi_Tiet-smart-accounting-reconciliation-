@@ -1,0 +1,2735 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đối chiếu sổ chi tiết V4.9.1</title>
+<script>
+(function(){
+  const HASH='65a086cd9f5e1676af514e71f43fcb5675abc3c11c4ea92f93b1c2f15ab136af';
+  async function sha256(str){
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  function showLock(){
+    document.documentElement.style.overflow='hidden';
+    const el=document.createElement('div');
+    el.id='lock-screen';
+    el.innerHTML=`
+      <style>
+        #lock-screen{position:fixed;inset:0;z-index:99999;background:#f5f5f3;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+        #lock-box{background:#fff;border:1px solid #e8e8e0;border-radius:16px;padding:2.5rem 2rem;width:340px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+        #lock-box .lock-icon{font-size:40px;margin-bottom:1rem}
+        #lock-box h2{font-size:17px;font-weight:600;color:#1a1a1a;margin-bottom:.35rem}
+        #lock-box p{font-size:13px;color:#888;margin-bottom:1.5rem}
+        #lock-pass{width:100%;padding:10px 14px;border:1px solid #d0d0c8;border-radius:8px;font-size:14px;outline:none;transition:border .15s;margin-bottom:.75rem;font-family:inherit}
+        #lock-pass:focus{border-color:#1D9E75}
+        #lock-btn{width:100%;padding:10px;background:#1D9E75;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:background .15s}
+        #lock-btn:hover{background:#0F6E56}
+        #lock-err{font-size:12px;color:#e53935;margin-top:.5rem;min-height:18px}
+      </style>
+      <div id="lock-box">
+        <div class="lock-icon">🔒</div>
+        <h2>Đối chiếu sổ chi tiết</h2>
+        <p>Vui lòng nhập mật khẩu để truy cập</p>
+        <input id="lock-pass" type="password" placeholder="Nhập mật khẩu..." autofocus/>
+        <button id="lock-btn">Đăng nhập</button>
+        <div id="lock-err"></div>
+      </div>`;
+    document.body.appendChild(el);
+    async function tryUnlock(){
+      const val=document.getElementById('lock-pass').value;
+      const h=await sha256(val);
+      if(h===HASH){
+        el.remove();
+        document.documentElement.style.overflow='';
+      } else {
+        document.getElementById('lock-err').textContent='Mật khẩu không đúng, vui lòng thử lại.';
+        document.getElementById('lock-pass').value='';
+        document.getElementById('lock-pass').focus();
+      }
+    }
+    document.getElementById('lock-btn').onclick=tryUnlock;
+    document.getElementById('lock-pass').onkeydown=e=>{if(e.key==='Enter')tryUnlock();};
+  }
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',showLock);}
+  else{showLock();}
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#1a1a1a;background:#f5f5f3;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e0e0d8;padding:0 2rem;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar-title{font-size:15px;font-weight:600}.topbar-sub{font-size:12px;color:#888;margin-left:4px}
+.wrap{max-width:1600px;margin:0 auto;padding:2rem 1.5rem}
+h2{font-size:18px;font-weight:600;margin-bottom:.25rem}h3{font-size:14px;font-weight:600;margin-bottom:.5rem}
+.step{background:#fff;border:1px solid #e8e8e0;border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.upload-zone{border:2px dashed #d0d0c8;border-radius:10px;padding:1.5rem;text-align:center;cursor:pointer;background:#fafaf8;transition:all .15s}
+.upload-zone:hover{background:#f0f0eb;border-color:#aaa}
+.upload-zone.loaded{border-color:#1D9E75;border-style:solid;background:#f0faf6}
+.uz-icon{font-size:28px;display:block;margin-bottom:.4rem}.uz-label{color:#666;font-size:13px;margin-bottom:3px}
+.uz-hint{font-size:11px;color:#aaa}
+.upload-zone.loaded .uz-label{color:#0F6E56;font-weight:500}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.sec-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid #d0d0c8;border-radius:8px;background:#fff;color:#1a1a1a;font-size:13px;cursor:pointer;font-family:inherit;transition:all .12s}
+.btn:hover{background:#f5f5f3;border-color:#aaa}.btn:active{transform:scale(.98)}
+.btn-primary{background:#1D9E75;color:#fff;border-color:#1D9E75;font-weight:500}.btn-primary:hover{background:#0F6E56;border-color:#0F6E56}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{padding:4px 8px;font-size:12px}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.badge-green{background:#e1f5ee;color:#0F6E56}.badge-blue{background:#e6f1fb;color:#185FA5}
+.badge-amber{background:#faeeda;color:#854F0B}.badge-gray{background:#f1efe8;color:#5F5E5A}
+.badge-red{background:#fcebeb;color:#A32D2D}
+.summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
+.metric{background:#fff;border:1px solid #e8e8e0;border-radius:10px;padding:.875rem 1rem}
+.metric-label{font-size:12px;color:#888;margin-bottom:4px}.metric-val{font-size:22px;font-weight:600}
+.tabs{display:flex;gap:4px;margin-bottom:1rem;border-bottom:1px solid #e8e8e0;padding-bottom:0;flex-wrap:wrap}
+.tab{padding:8px 16px;border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:13px;background:transparent;color:#888;font-family:inherit;margin-bottom:-1px;transition:all .12s;font-weight:800;text-transform:uppercase;letter-spacing:.035em}
+.tab:hover{color:#1a1a1a}.tab.active{color:#1D9E75;border-bottom-color:#1D9E75;font-weight:600}
+.tab-count{display:inline-block;background:#f0f0eb;color:#666;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px}
+.tab.active .tab-count{background:#e1f5ee;color:#0F6E56}
+
+/* TABLE — table-layout fixed cho cột co giãn tự do với ellipsis */
+.tbl-wrap{overflow:auto;border:1px solid #d0d0c8;border-radius:8px;background:#fff;max-height:72vh;position:relative}
+table.data-tbl{border-collapse:separate;border-spacing:0;font-size:13px;table-layout:fixed;width:100%;min-width:0}
+table.data-tbl th{padding:8px 18px 8px 12px;font-weight:700;font-size:12px;color:#1a1a1a;background:#f0f0eb;border:1px solid #d0d0c8;text-align:left;white-space:nowrap;user-select:none;position:sticky;top:0;overflow:visible;z-index:80}
+table.data-tbl td{user-select:text}
+.check-cell,.btn,.col-resizer,input,select,button{user-select:none}
+.config-panel{background:#fff;border:1px solid #d0d0c8;border-radius:10px;padding:1rem;margin-bottom:1rem}
+.config-title{font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem;color:#0F6E56}
+.config-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
+.priority-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-top:.75rem}
+.help-box{background:#eef5ff;border:1px solid #b5d4f4;border-radius:8px;padding:.75rem 1rem;font-size:13px;line-height:1.55;margin:.75rem 0;color:#244a73}
+.manual-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.75rem;background:#fafaf8;border:1px solid #e8e8e0;border-radius:8px;padding:.625rem .75rem}
+.manual-toolbar label{font-size:12px;color:#666;font-weight:700}
+.filter-input{width:220px!important}
+@media(max-width:900px){.config-grid,.priority-grid{grid-template-columns:1fr 1fr}}
+table.data-tbl th .th-label{display:inline-block;max-width:calc(100% - 10px);overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+table.data-tbl th.num{text-align:right}
+table.data-tbl td{padding:7px 12px;border:1px solid #e8e8e0;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:text}
+.check-cell,.check-cell *,.col-resizer,.btn,button,input,select{user-select:none}
+table.data-tbl tr:hover td{background:#fafaf8}
+table.data-tbl tr.selected td{background:#f0faf6}
+.col-resizer{position:absolute;right:0;top:0;width:14px;height:100%;cursor:col-resize;z-index:999;user-select:none;touch-action:none;pointer-events:auto}
+.col-resizer::after{content:'';position:absolute;right:5px;top:20%;height:60%;width:2px;background:#c8c8c0}
+.col-resizer:hover::after,.col-resizer.dragging::after{background:#1D9E75;width:3px;top:0;height:100%}
+
+/* STICKY CHECKBOX / GROUP LABEL IN MANUAL TABLES */
+#tab-manual .data-tbl th:first-child,
+#tab-manual .data-tbl td:first-child,
+#tab-manual .data-tbl td.check-cell{
+  position:sticky!important;left:0!important;z-index:120;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.06);
+}
+#tab-manual .data-tbl thead th:first-child{z-index:220;background:#f0f0eb}
+#tab-manual .data-tbl tr.group-hdr td.check-cell{z-index:160;background:#eef5ff}
+#tab-manual .data-tbl tr.group-hdr td:nth-child(2){
+  position:sticky;left:36px;z-index:150;background:#eef5ff;box-shadow:2px 0 4px rgba(0,0,0,.05);
+}
+#tab-manual .data-tbl tr.selected td.check-cell{background:#f0faf6}
+
+/* CHECKBOX to hơn */
+.big-check{width:18px;height:18px;cursor:pointer;accent-color:#1D9E75}
+td.check-cell{text-align:center;padding:4px}
+
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.diff-ok{color:#1D9E75;font-weight:600}.diff-plus{color:#E24B4A;font-weight:500}.diff-minus{color:#BA7517;font-weight:500}
+.equal-amount{background:#fff1b8 !important;outline:2px solid #f0a000;font-weight:700}
+
+tr.group-hdr td{background:#eef5ff;font-weight:700;color:#185FA5;padding:8px 12px;border-top:2px solid #b5d4f4;cursor:pointer}
+tr.group-total td{background:#fafaf8;font-weight:600;border-top:1px solid #d0d0c8}
+tr.section-hdr td{background:#1a1a1a;color:#fff;font-weight:700;padding:10px 12px;font-size:13px;letter-spacing:.04em;cursor:pointer}
+tr.grand-total td{background:#fff8e6;font-weight:700;border-top:2px solid #BA7517;font-size:13px}
+tr.manual-added td{background:#fef9e7 !important}
+
+.manual-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;width:100%;align-items:start}
+.manual-grid>div{min-width:0;max-width:100%;overflow:hidden}
+.manual-grid .tbl-wrap{width:100%;max-width:100%;overflow:auto}
+.info-box{background:#f5f5f3;border:1px solid #e8e8e0;border-radius:8px;padding:.75rem 1rem;font-size:13px;color:#666;margin-bottom:1rem;line-height:1.6}
+.warn-box{background:#fff4d0;border:1px solid #f0c050;border-radius:8px;padding:.75rem 1rem;font-size:13px;color:#7a5a00;margin-bottom:1rem}
+.ok-box{background:#e1f5ee;border:1px solid #5dcaa5;border-radius:8px;padding:.75rem 1rem;font-size:13px;color:#0F6E56;margin-bottom:1rem}
+.sum-bar{background:#fafaf8;border:1px solid #e8e8e0;border-radius:8px;padding:.625rem 1rem;font-size:13px;margin-bottom:.75rem;display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap}
+select{width:100%;padding:6px 8px;border:1px solid #d8d8d0;border-radius:7px;background:#fff;color:#1a1a1a;font-size:13px;font-family:inherit;margin-top:3px}
+select:focus{outline:2px solid #1D9E75;outline-offset:1px}
+input[type=file]{display:none}
+input[type=number],input[type=text]{padding:5px 8px;border:1px solid #d8d8d0;border-radius:7px;font-size:13px;font-family:inherit}
+input[type=number]{width:70px}
+.preview-box{background:#fafaf8;border:1px solid #e8e8e0;border-radius:8px;padding:.625rem 1rem;font-size:12px;color:#666;margin-top:.5rem;max-height:80px;overflow:hidden}
+.preview-row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.empty-state{text-align:center;padding:3rem 1rem;color:#aaa}
+.input-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;margin-bottom:1.25rem;width:100%}
+.input-summary>div{min-width:0;max-width:100%;overflow:hidden}
+.input-summary .tbl-wrap{width:100%;max-width:100%;overflow:auto}
+.input-card{background:#fff;border:1px solid #e8e8e0;border-radius:10px;padding:1rem;min-width:0}
+.input-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #e8e8e0;flex-wrap:wrap;gap:8px}
+.input-card-title{font-size:13px;font-weight:600}
+.input-card-stat{font-size:12px;color:#666}
+.input-card-stat b{color:#1a1a1a;font-size:14px}
+
+.add-form{background:#fafaf8;border:1px dashed #c0c0b5;border-radius:8px;padding:.75rem;margin-bottom:.75rem}
+.add-form-row{display:grid;gap:6px;margin-bottom:6px}
+.add-form-row input{width:100%}
+.add-form-actions{display:flex;gap:6px;margin-top:6px}
+.collapse-icon{display:inline-block;width:14px;font-size:10px;transition:transform .15s}
+.collapsed-hdr .collapse-icon{transform:rotate(-90deg)}
+footer{text-align:center;padding:2rem;font-size:12px;color:#bbb}
+
+.float-scroll{position:fixed;right:18px;bottom:22px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.float-scroll button{width:46px;height:42px;border-radius:10px;border:1px solid #d0d0c8;background:#fff;color:#1D9E75;font-weight:800;font-size:18px;box-shadow:0 4px 14px rgba(0,0,0,.12);cursor:pointer}
+.float-scroll button:hover{background:#f0faf6;border-color:#1D9E75}
+@media(max-width:900px){.grid2,.summary-bar,.manual-grid,.input-summary{grid-template-columns:1fr}.wrap{padding:1rem}}
+
+.conf-badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;white-space:nowrap}
+.conf-high{background:#e1f5ee;color:#0F6E56;border:1px solid #8ed8bf}
+.conf-mid{background:#fff4d0;color:#7a5a00;border:1px solid #f0c050}
+.conf-low{background:#ffe7d6;color:#b24a00;border:1px solid #f1a36e}
+.result-filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.75rem;background:#fafaf8;border:1px solid #e8e8e0;border-radius:8px;padding:.625rem .75rem}
+.result-filter-bar label{font-size:12px;color:#666;font-weight:700}
+.result-dashboard{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:.75rem}
+.conf-card{border:1px solid #e8e8e0;border-radius:10px;background:#fff;padding:.65rem .8rem;cursor:pointer}
+.conf-card b{font-size:18px}.conf-card small{display:block;color:#666;margin-top:2px}
+.conf-card.active{outline:2px solid #1D9E75}
+.result-row-low td{background:#fff4ea!important}.result-row-mid td{background:#fffaf0!important}.result-row-high td{background:#f7fffb!important}
+.review-check{width:18px;height:18px;accent-color:#1D9E75;cursor:pointer}
+
+</style>
+</head>
+<body>
+<div class="topbar">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+  <span class="topbar-title">Đối chiếu sổ chi tiết V4.6</span>
+  <span class="topbar-sub">V4.9.1 · mức tin cậy & lọc rủi ro</span>
+</div>
+<div class="wrap">
+
+<div class="step" id="step-upload">
+  <h2 style="margin-bottom:.25rem">Upload 2 sổ chi tiết</h2>
+  <p style="color:#888;font-size:13px;margin-bottom:1.25rem">Cả 2 file đều là sổ chi tiết phát sinh chưa cộng gộp (mỗi dòng là 1 phát sinh nhỏ).</p>
+  <div class="grid2">
+    <div>
+      <div class="sec-label">File A</div>
+      <div class="upload-zone" id="zone-a" onclick="document.getElementById('file-a').click()">
+        <span class="uz-icon">📊</span>
+        <div class="uz-label" id="label-a">Nhấn để chọn file .xlsx</div>
+        <div class="uz-hint">Sổ chi tiết tài khoản (file A)</div>
+      </div>
+      <input type="file" id="file-a" accept=".xlsx,.xls" onchange="handleFile('a',this)">
+      <div style="margin-top:.625rem;display:flex;align-items:center;gap:8px;font-size:13px;color:#666">
+        <span>Bỏ qua</span><input type="number" id="skip-a" value="0" min="0" max="20" onchange="onSkipChange('a')"><span>dòng đầu</span>
+      </div>
+      <div class="preview-box" id="preview-a" style="display:none"></div>
+    </div>
+    <div>
+      <div class="sec-label">File B</div>
+      <div class="upload-zone" id="zone-b" onclick="document.getElementById('file-b').click()">
+        <span class="uz-icon">📊</span>
+        <div class="uz-label" id="label-b">Nhấn để chọn file .xlsx</div>
+        <div class="uz-hint">Sổ chi tiết tài khoản (file B)</div>
+      </div>
+      <input type="file" id="file-b" accept=".xlsx,.xls" onchange="handleFile('b',this)">
+      <div style="margin-top:.625rem;display:flex;align-items:center;gap:8px;font-size:13px;color:#666">
+        <span>Bỏ qua</span><input type="number" id="skip-b" value="0" min="0" max="20" onchange="onSkipChange('b')"><span>dòng đầu</span>
+      </div>
+      <div class="preview-box" id="preview-b" style="display:none"></div>
+    </div>
+  </div>
+
+  <div id="col-map-area" style="display:none;margin-top:1.25rem">
+    <div style="background:#f5f5f3;border:1px solid #e8e8e0;border-radius:10px;padding:1.25rem">
+      <h3 style="margin-bottom:1rem">Xác nhận cột dữ liệu</h3>
+      <div class="grid2" id="col-map-grid"></div>
+      <div class="warn-box" style="margin-top:1rem;margin-bottom:0">
+        <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+          <input type="checkbox" id="opt-cross-vendor" checked style="margin-top:2px">
+          <span><b>Cho phép khớp cùng số hóa đơn khác đối tượng</b> — có cảnh báo màu cam trong kết quả. Tắt nếu nhiều NCC có số hóa đơn trùng nhau như 1, 2, 3.</span>
+        </label>
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
+        <button class="btn btn-primary" onclick="runReconcile()">Chạy đối chiếu</button>
+        <span id="run-hint" style="font-size:12px;color:#aaa"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="step-result" style="display:none">
+  <div class="summary-bar" id="summary-bar"></div>
+  <div class="step" style="padding-bottom:0">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('input')">BẢNG INPUT <span class="tab-count" id="cnt-input">0</span></button>
+      <button class="tab" onclick="showTab('manual')">CHỜ GHÉP TAY <span class="tab-count" id="cnt-manual">0</span></button>
+      <button class="tab" onclick="showTab('result')">KẾT QUẢ ĐỐI CHIẾU <span class="tab-count" id="cnt-result">0</span></button>
+      <button class="tab" onclick="showTab('log')">LOG NGUYÊN NHÂN <span class="tab-count" id="cnt-log">0</span></button>
+    </div>
+    <div style="padding-bottom:1.25rem">
+      <div id="tab-input"></div>
+      <div id="tab-manual" style="display:none"></div>
+      <div id="tab-result" style="display:none"></div>
+      <div id="tab-log" style="display:none"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap">
+    <button class="btn" onclick="undoAction()" id="btn-undo" title="Hoàn tác (Ctrl+Z)">↶ Hoàn tác</button>
+    <button class="btn" onclick="resetToOriginal()">⟲ Về trạng thái ban đầu</button>
+    <button class="btn" onclick="rerunAutoMatchKeepManual()">↻ Re-run Auto Match</button>
+    <button class="btn" onclick="resetColWidths()">↔ Reset độ rộng cột</button>
+    <button class="btn" onclick="backToColumnConfig()">⚙ Chọn lại cột đối chiếu</button>
+    <button class="btn btn-primary" onclick="exportResult()">Xuất Excel kết quả</button>
+    <button class="btn" onclick="resetAll()">Tải file mới</button>
+  </div>
+</div>
+
+<div class="float-scroll" aria-label="Điều hướng nhanh">
+  <button type="button" title="Quay lên đầu" onclick="scrollToTop()">↑</button>
+  <button type="button" title="Xuống cuối trang" onclick="scrollToBottom()">↓</button>
+</div>
+<footer>Dữ liệu chỉ xử lý trong trình duyệt · Không gửi lên server · Hỗ trợ Chrome, Edge, Firefox</footer>
+</div>
+
+<script>
+let rawSheetA=[], rawSheetB=[];
+let rawA=[], rawB=[];
+// Cả 2 file giờ cùng cấu trúc sổ chi tiết
+let colA={invoice:'',date_ht:'',date_ct:'',num_ct:'',account:'',desc:'',tax:''};
+let colB={invoice:'',date_ht:'',date_ct:'',num_ct:'',account:'',desc:'',tax:''};
+let pairs=[], unmatchedA=[], unmatchedB=[];
+let matchLogs=[], suggestionCache=[];
+let cleanA=[], cleanB=[];
+let origA=[], origB=[];
+let detectedTotalA=null, detectedTotalB=null;
+let selA=new Set(), selB=new Set();
+let collapsedGroups=new Set();
+let collapsedSections={matched:false,unmatched:false};
+let undoStack=[];
+const MAX_UNDO=50;
+let nextManualId=0;
+let manualGroupModeA='vendor';
+let manualGroupModeB='vendor';
+let manualSortMode='amount_desc';
+let manualTextFilter='';
+let manualFilterTimer=null;
+let reconType='custom';
+let priorityFields=['vendor','hybrid_doc','amount','subset'];
+let colWidthMemory={};
+try{colWidthMemory=JSON.parse(localStorage.getItem('doiChieuColWidths')||'{}')||{};}catch(e){colWidthMemory={};}
+
+function norm(s){
+  if(s==null)return'';
+  return String(s).trim().toLowerCase()
+    .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g,'a').replace(/[èéẹẻẽêềếệểễ]/g,'e')
+    .replace(/[ìíịỉĩ]/g,'i').replace(/[òóọỏõôồốộổỗơờớợởỡ]/g,'o')
+    .replace(/[ùúụủũưừứựửữ]/g,'u').replace(/[ỳýỵỷỹ]/g,'y').replace(/đ/g,'d')
+    .replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
+}
+function normInv(s){
+  if(s==null)return'';
+  return String(s).trim().replace(/^0+/,'').toUpperCase();
+}
+function parseNum(v){
+  if(v==null||v==='')return 0;
+  return parseFloat(String(v).replace(/[,\s]/g,''))||0;
+}
+function fmtNum(n){return Math.round(n).toLocaleString('vi-VN');}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function cleanupVendorName(v){
+  if(!v)return'';
+  let s=String(v).replace(/\s+/g,' ').trim();
+  s=s.replace(/^[\s:;,\.\-–—=]+|[\s:;,\.\-–—=]+$/g,'').trim();
+
+  // Nếu người dùng ghi dạng "Tên A = Tên B" thì lấy vế tên đầu tiên.
+  s=s.replace(/\s*=\s*.*$/,'').trim();
+
+  // Bỏ các đuôi nghiệp vụ sau tên đối tượng: "- 331 Vận chuyển", "HĐ 4069...", "theo hóa đơn..."
+  s=s.replace(/\s*[-–—]\s*\d{2,}\b.*$/i,'').trim();
+  s=s.replace(/\s+theo\s+h[oó]a\s*[dđ][oơ]n.*$/i,'').trim();
+  s=s.replace(/\s+h[đd]\s*\d+.*$/i,'').trim();
+  s=s.replace(/\s+h[oó]a\s*[dđ][oơ]n\s*(s[oố])?.*$/i,'').trim();
+  s=s.replace(/\s+ng[aà]y\s+\d{1,2}[\/\-]\d{1,2}.*$/i,'').trim();
+  s=s.replace(/\s+(mst|m[ãa]\s*s[oố]\s*thu[eế]).*$/i,'').trim();
+  s=s.replace(/^[\s:;,\.\-–—=]+|[\s:;,\.\-–—=]+$/g,'').trim();
+  return s;
+}
+
+function extractVendor(desc){
+  if(!desc)return'';
+  let s=String(desc).replace(/\s+/g,' ').trim();
+  if(!s)return'';
+
+  // Nhóm keyword pháp nhân/đối tượng thường gặp trong sổ MISA.
+  const orgRe=String.raw`(?:C(?:Ô|ô|O|o)NG\s+TY|CTY|CHI\s+NH(?:Á|á|A|a)NH|CN\s+|V(?:Ă|ă|A|a)N\s+PH(?:Ò|ò|O|o)NG|KH(?:Á|á|A|a)CH\s*S(?:Ạ|ạ|A|a)N|NH(?:À|à|A|a)\s+KH(?:Á|á|A|a)CH|NH(?:À|à|A|a)\s+H(?:À|à|A|a)NG|TRUNG\s+T(?:Â|â|A|a)M|H(?:Ộ|ộ|O|o)\s+KINH\s+DOANH|C(?:Ử|ử|U|u)A\s+H(?:À|à|A|a)NG|C(?:Ơ|ơ|O|o)\s+S(?:Ở|ở|O|o)|B(?:Ệ|ệ|E|e)NH\s+VI(?:Ệ|ệ|E|e)N|TR(?:Ư|ư|U|u)(?:Ờ|ờ|O|o)NG|DOANH\s+NGHI(?:Ệ|ệ|E|e)P)`;
+  const orgTest=new RegExp(orgRe,'i');
+
+  // 1) Ưu tiên cụm đứng sau "cho/của" rồi bắt đầu từ keyword tổ chức đầu tiên trong cụm đó.
+  // Dữ liệu thực tế: "phòng nghỉ cho CÔNG TY...", "dịch vụ ăn uống cho CÔNG TY...", "hóa đơn mua vào của CÔNG TY...".
+  let relRe=/(?:cho|c[uủ]a|cua)\s+([^;]+)/ig;
+  let relMatches=[]; let m;
+  while((m=relRe.exec(s))!==null){
+    let phrase=m[1];
+    let om=new RegExp(orgRe,'i').exec(phrase);
+    if(om){
+      let cand=cleanupVendorName(phrase.slice(om.index));
+      if(orgTest.test(cand))relMatches.push(cand);
+    }
+  }
+  if(relMatches.length)return relMatches[relMatches.length-1];
+
+  // 2) Nếu tên đối tượng nằm sau dấu gạch ngang: "... HĐ 4069 ngày 15/04/2026- Công ty bảo hiểm MiC Hà Thành".
+  // Cho phép không có khoảng trắng trước/sau dấu gạch.
+  let dashParts=s.split(/\s*[-–—]\s*(?=(?:C(?:Ô|ô|O|o)ng|CTY|Chi|V(?:Ă|ă|A|a)n|Kh(?:Á|á|A|a)ch|Nh(?:À|à|A|a)|Trung|H(?:Ộ|ộ|O|o)|C(?:Ử|ử|U|u)a|C(?:Ơ|ơ|O|o)|B(?:Ệ|ệ|E|e)nh|Doanh))/i).map(x=>x.trim()).filter(Boolean);
+  for(let i=dashParts.length-1;i>=0;i--){
+    let om=new RegExp(orgRe,'i').exec(dashParts[i]);
+    if(om)return cleanupVendorName(dashParts[i].slice(om.index));
+  }
+
+  // 3) Fallback: tìm keyword thực thể cuối cùng trong chuỗi, rồi cắt đuôi nghiệp vụ.
+  let orgFind=new RegExp(orgRe,'ig');
+  let last=null;
+  while((m=orgFind.exec(s))!==null){last=m.index;}
+  if(last!==null)return cleanupVendorName(s.slice(last));
+
+  // 4) Không tìm thấy keyword tổ chức: bỏ các prefix nghiệp vụ phổ biến để còn lại tên ngắn nhất có thể.
+  return cleanupVendorName(s
+    .replace(/^mua\s+(h[aà]ng|d[iị]ch\s+v[uụ])\s+/i,'')
+    .replace(/^d[iị]ch\s+v[uụ]\s+[^\s]+\s+cho\s+/i,'')
+    .replace(/^chi\s+ti[eề]n\s+/i,'')
+    .replace(/^h[aạ]ch\s+to[aá]n\s+/i,''));
+}
+function guessCol(headers,kws){
+  let lh=headers.map(h=>norm(String(h)));
+  for(let kw of kws){let i=lh.findIndex(h=>h.includes(norm(kw)));if(i>=0)return headers[i];}
+  return headers[0]||'';
+}
+
+function buildHeadersFromRows(parentRow, childRow){
+  let headers=[];
+  let lastParent='';
+  for(let i=0;i<Math.max(parentRow.length, childRow?childRow.length:0);i++){
+    let p=parentRow[i]!=null?String(parentRow[i]).trim():'';
+    let c=childRow&&childRow[i]!=null?String(childRow[i]).trim():'';
+    if(p)lastParent=p;
+    let np=norm(p), nc=norm(c), nlast=norm(lastParent);
+    if(c && (nlast.includes('phat sinh') || np.includes('phat sinh')) && (nc==='no'||nc==='co'||nc.includes('no')||nc.includes('co'))){
+      headers[i]=(lastParent||p)+' '+c;
+    }else if(p){
+      headers[i]=p;
+    }else if(c && nlast.includes('phat sinh')){
+      headers[i]=lastParent+' '+c;
+    }else if(c && !['no','co'].includes(nc)){
+      headers[i]=c;
+    }else{
+      headers[i]='__COL'+i;
+    }
+  }
+  return headers.map((h,i)=>h&&String(h).trim()?String(h).trim():('__COL'+i));
+}
+
+function parseWithSkip(sheetData, skip){
+  if(!sheetData.length)return[];
+  let headerRow = sheetData[skip]||[];
+  let nextRow = sheetData[skip+1]||[];
+  let useTwoRows=false;
+  let rowText=norm(headerRow.join(' ')), nextText=norm(nextRow.join(' '));
+  if(rowText.includes('phat sinh') && (nextText.includes('no') || nextText.includes('co'))) useTwoRows=true;
+  let headers = useTwoRows ? buildHeadersFromRows(headerRow,nextRow) : headerRow.map((h,i)=>h!=null&&String(h).trim()!==''?String(h).trim():('__COL'+i));
+  let startRow=skip+(useTwoRows?2:1);
+  let result=[];
+  for(let r=startRow;r<sheetData.length;r++){
+    let row=sheetData[r];
+    if(!row||row.every(c=>c==null||c===''))continue;
+    let obj={};
+    headers.forEach((h,i)=>obj[h]=row[i]!=null?row[i]:'');
+    result.push(obj);
+  }
+  return result;
+}
+
+function readXLSX(f,cb){
+  let fr=new FileReader();
+  fr.onload=e=>{
+    let wb=XLSX.read(e.target.result,{type:'binary'});
+    let ws=wb.Sheets[wb.SheetNames[0]];
+    let aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    cb(aoa);
+  };
+  fr.readAsBinaryString(f);
+}
+
+function showPreview(which, aoa, skip){
+  let el=document.getElementById('preview-'+which);
+  if(!aoa.length){el.style.display='none';return;}
+  let headerRow=aoa[skip]||[];
+  let cols=headerRow.filter(c=>c!=null&&String(c).trim()!=='').map(c=>String(c).trim());
+  el.style.display='block';
+  el.innerHTML='<div style="font-weight:600;margin-bottom:3px;color:#1a1a1a">Dòng header (dòng '+(skip+1)+'):</div>'+
+    cols.slice(0,8).map(c=>`<div class="preview-row">• ${esc(c)}</div>`).join('')+
+    (cols.length>8?`<div style="color:#aaa">... và ${cols.length-8} cột nữa</div>`:'');
+}
+
+function handleFile(which,inp){
+  let f=inp.files[0];if(!f)return;
+  readXLSX(f,aoa=>{
+    if(which==='a'){
+      rawSheetA=aoa;
+      document.getElementById('zone-a').classList.add('loaded');
+      document.getElementById('label-a').textContent='✓ '+f.name;
+      document.querySelector('#zone-a .uz-icon').textContent='✅';
+      let skip=autoDetectSkip(aoa);
+      document.getElementById('skip-a').value=skip;
+      rawA=parseWithSkip(aoa,skip);
+      showPreview('a',aoa,skip);
+    }else{
+      rawSheetB=aoa;
+      document.getElementById('zone-b').classList.add('loaded');
+      document.getElementById('label-b').textContent='✓ '+f.name;
+      document.querySelector('#zone-b .uz-icon').textContent='✅';
+      let skip=autoDetectSkip(aoa);
+      document.getElementById('skip-b').value=skip;
+      rawB=parseWithSkip(aoa,skip);
+      showPreview('b',aoa,skip);
+    }
+    if(rawA.length&&rawB.length)showColMap();
+  });
+}
+
+function autoDetectSkip(aoa){
+  for(let i=0;i<Math.min(aoa.length,20);i++){
+    let row=aoa[i]||[];
+    let text=norm(row.join(' '));
+    let nonEmpty=row.filter(c=>c!=null&&String(c).trim()!=='').length;
+    if((text.includes('ngay') && (text.includes('chung tu')||text.includes('hach toan')) && (text.includes('phat sinh')||text.includes('so tien'))) ||
+       (nonEmpty>=4 && (text.includes('so chung tu')||text.includes('so hoa don')||text.includes('tai khoan')))) return i;
+  }
+  return 0;
+}
+
+function onSkipChange(which){
+  let skip=parseInt(document.getElementById('skip-'+which).value)||0;
+  if(which==='a'){rawA=parseWithSkip(rawSheetA,skip);showPreview('a',rawSheetA,skip);}
+  else{rawB=parseWithSkip(rawSheetB,skip);showPreview('b',rawSheetB,skip);}
+  if(rawA.length&&rawB.length)showColMap();
+}
+
+function showColMap(){
+  let ha=rawA.length?Object.keys(rawA[0]).filter(k=>!k.startsWith('__COL')):[];
+  let hb=rawB.length?Object.keys(rawB[0]).filter(k=>!k.startsWith('__COL')):[];
+  if(!ha.length||!hb.length)return;
+
+  colA.invoice=guessCol(ha,['Số hóa đơn','So hoa don','so hd','invoice','mau so hd']);
+  colA.date_ht=guessCol(ha,['Ngày hạch toán','Ngay hach toan']);
+  colA.date_ct=guessCol(ha,['Ngày chứng từ','Ngay chung tu','ngay ct']);
+  colA.num_ct=guessCol(ha,['Số chứng từ','So chung tu','so ct']);
+  colA.account=guessCol(ha,['Tài khoản đối ứng','Tai khoan doi ung','TK đối ứng','TK doi ung','tai khoan']);
+  colA.desc=guessCol(ha,['Tên đối tượng','Ten doi tuong','Đối tượng','Doi tuong','Diễn giải chung','Dien giai chung','Diễn giải','Dien giai','mo ta','ghi chu']);
+  colA.tax=guessCol(ha,['Phát sinh Nợ','Phat sinh No','PS No','Debit','Phát sinh Có','Phat sinh Co','PS Co','Credit','Số tiền','So tien']);
+
+  colB.invoice=guessCol(hb,['Số hóa đơn','So hoa don','so hd','invoice','mau so hd']);
+  colB.date_ht=guessCol(hb,['Ngày hạch toán','Ngay hach toan']);
+  colB.date_ct=guessCol(hb,['Ngày chứng từ','Ngay chung tu','ngay ct']);
+  colB.num_ct=guessCol(hb,['Số chứng từ','So chung tu','so ct']);
+  colB.account=guessCol(hb,['Tài khoản đối ứng','Tai khoan doi ung','TK đối ứng','TK doi ung','tai khoan']);
+  colB.desc=guessCol(hb,['Tên đối tượng','Ten doi tuong','Đối tượng','Doi tuong','Diễn giải chung','Dien giai chung','Diễn giải','Dien giai','mo ta','ghi chu']);
+  colB.tax=guessCol(hb,['Phát sinh Nợ','Phat sinh No','PS No','Debit','Phát sinh Có','Phat sinh Co','PS Co','Credit','Số tiền','So tien']);
+
+  function mkSel(id,opts,val,extra=''){
+    let s=`<select id="${id}" ${extra}>`;
+    opts.forEach(o=>{s+=`<option${o===val?' selected':''}>${esc(o)}</option>`;});
+    return s+'</select>';
+  }
+  function colBlock(label,id,opts,val){
+    return`<div style="margin-bottom:.625rem"><div style="font-size:12px;color:#666;margin-bottom:2px">${label}</div>${mkSel(id,opts,val)}</div>`;
+  }
+  const priorityOpts=['Đối tượng','Hóa đơn hoặc chứng từ','Số chứng từ','TK đối ứng','Số hóa đơn','Phát sinh','Ghép theo tổng nhiều khoản','Không dùng'];
+  function prioritySel(id, val){return mkSel(id, priorityOpts, val, 'onchange="savePriorityConfig()"');}
+
+  document.getElementById('col-map-grid').innerHTML=`
+    <div style="grid-column:1/-1">
+      <div class="config-panel">
+        <div class="config-title">CẤU HÌNH ĐỐI CHIẾU</div>
+        <div class="help-box">
+          <b>Hướng dẫn nhanh:</b><br>
+          <b>1331/33311:</b> Ưu tiên 1 = Đối tượng; Ưu tiên 2 = Hóa đơn nếu có, nếu không có thì gom theo Số chứng từ; Ưu tiên 3 = Tổng phát sinh; sau đó Ghép theo tổng nhiều khoản trong cùng đối tượng.<br>
+          <b>131 công nợ phải thu:</b> mặc định lấy Phát sinh Nợ; Ưu tiên = Số chứng từ → TK đối ứng → Phát sinh.<br>
+          <b>331 công nợ phải trả:</b> mặc định lấy Phát sinh Có; Ưu tiên = Số chứng từ → TK đối ứng → Phát sinh.<br>
+          <b>3411/3341 vay, lương, công nợ nội bộ:</b> Ưu tiên = Số chứng từ ↔ Số hóa đơn/Số chứng từ → Tổng phát sinh → Ghép theo tổng nhiều khoản nhiều cụm. Dùng tốt cho trường hợp 1 chứng từ bên này bằng tổng nhiều ủy nhiệm chi/phiếu chi bên kia.<br>
+          Tool tự tách header dạng <b>Phát sinh → Nợ/Có</b> thành cột riêng nếu file có header 2 dòng. Khi chọn loại sổ, tab <b>Chờ ghép tay</b> và <b>Kết quả</b> sẽ tự nhóm theo ưu tiên phù hợp; nhân viên vẫn đổi lại được.
+        </div>
+        <div class="config-grid">
+          <div><div class="sec-label">Loại đối chiếu</div>
+            <select id="recon-type" onchange="applyReconPreset(this.value)">
+              <option value="tax1331">1331 - Thuế GTGT đầu vào</option>
+              <option value="tax33311">33311 - Thuế GTGT đầu ra</option>
+              <option value="debt131">131 - Công nợ phải thu</option>
+              <option value="debt331">331 - Công nợ phải trả</option>
+              <option value="debt3411">3411/3341 - Vay/lương/nội bộ</option>
+              <option value="debt">131/331 - Công nợ tùy chỉnh</option>
+              <option value="bank">112 - Ngân hàng</option>
+              <option value="custom" selected>Tùy chỉnh</option>
+            </select>
+          </div>
+          <div><div class="sec-label">Tự trích đối tượng</div><label style="font-size:13px"><input type="checkbox" checked disabled> Từ diễn giải nếu cột đối tượng trống</label></div>
+        </div>
+        <div class="priority-grid">
+          <div><div class="sec-label">Ưu tiên ghép số 1</div>${prioritySel('priority-1','Đối tượng')}</div>
+          <div><div class="sec-label">Ưu tiên ghép số 2</div>${prioritySel('priority-2','Hóa đơn hoặc chứng từ')}</div>
+          <div><div class="sec-label">Ưu tiên ghép số 3</div>${prioritySel('priority-3','Phát sinh')}</div>
+          <div><div class="sec-label">Ưu tiên ghép số 4</div>${prioritySel('priority-4','Ghép theo tổng nhiều khoản')}</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-label" style="margin-bottom:.75rem">File A</div>
+      ${colBlock('Số hóa đơn','ca-inv',ha,colA.invoice)}
+      ${colBlock('Ngày hạch toán','ca-date-ht',ha,colA.date_ht)}
+      ${colBlock('Ngày chứng từ','ca-date-ct',ha,colA.date_ct)}
+      ${colBlock('Số chứng từ','ca-num-ct',ha,colA.num_ct)}
+      ${colBlock('Tài khoản đối ứng','ca-account',ha,colA.account)}
+      ${colBlock('Lấy tên đối tượng từ (Diễn giải/Tên đối tượng)','ca-des',ha,colA.desc)}
+      ${colBlock('Lấy phát sinh đối chiếu từ (Phát sinh Nợ/Có)','ca-tax',ha,colA.tax)}
+    </div>
+    <div>
+      <div class="sec-label" style="margin-bottom:.75rem">File B</div>
+      ${colBlock('Số hóa đơn','cb-inv',hb,colB.invoice)}
+      ${colBlock('Ngày hạch toán','cb-date-ht',hb,colB.date_ht)}
+      ${colBlock('Ngày chứng từ','cb-date-ct',hb,colB.date_ct)}
+      ${colBlock('Số chứng từ','cb-num-ct',hb,colB.num_ct)}
+      ${colBlock('Tài khoản đối ứng','cb-account',hb,colB.account)}
+      ${colBlock('Lấy tên đối tượng từ (Diễn giải/Tên đối tượng)','cb-des',hb,colB.desc)}
+      ${colBlock('Lấy phát sinh đối chiếu từ (Phát sinh Nợ/Có)','cb-tax',hb,colB.tax)}
+    </div>`;
+  document.getElementById('col-map-area').style.display='block';
+}
+
+
+function setSelectBest(id, opts, keywords){
+  let el=document.getElementById(id); if(!el)return;
+  let choices=Array.from(el.options).map(o=>o.value);
+  let found=guessCol(choices, keywords);
+  if(found)el.value=found;
+}
+function applyReconColumnPreset(type){
+  // Tự đề xuất cột tiền theo loại sổ: 1331 thường lấy phát sinh Nợ, 33311 thường lấy phát sinh Có.
+  if(type==='tax33311'){
+    setSelectBest('ca-tax',[],['Phát sinh Có','Phat sinh Co','PS Có','PS Co','Credit','Có']);
+    setSelectBest('cb-tax',[],['Phát sinh Có','Phat sinh Co','PS Có','PS Co','Credit','Có']);
+  }else if(type==='tax1331'){
+    setSelectBest('ca-tax',[],['Phát sinh Nợ','Phat sinh No','PS Nợ','PS No','Debit','Nợ']);
+    setSelectBest('cb-tax',[],['Phát sinh Nợ','Phat sinh No','PS Nợ','PS No','Debit','Nợ']);
+  }else if(type==='debt131'){
+    // 131 phải thu: ưu tiên đối chiếu phát sinh Nợ.
+    setSelectBest('ca-tax',[],['Phát sinh Nợ','Phat sinh No','PS Nợ','PS No','Debit','Nợ','Phát sinh']);
+    setSelectBest('cb-tax',[],['Phát sinh Nợ','Phat sinh No','PS Nợ','PS No','Debit','Nợ','Phát sinh']);
+  }else if(type==='debt331'){
+    // 331 phải trả: ưu tiên đối chiếu phát sinh Có.
+    setSelectBest('ca-tax',[],['Phát sinh Có','Phat sinh Co','PS Có','PS Co','Credit','Có','Phát sinh']);
+    setSelectBest('cb-tax',[],['Phát sinh Có','Phat sinh Co','PS Có','PS Co','Credit','Có','Phát sinh']);
+  }else if(type==='debt3411'){
+    // 3411/3341: thường cần chọn cột phát sinh tổng quát hoặc số tiền đang đối chiếu.
+    setSelectBest('ca-tax',[],['Phát sinh','Số tiền','So tien','Phát sinh Nợ','Phat sinh No','Phát sinh Có','Phat sinh Co']);
+    setSelectBest('cb-tax',[],['Phát sinh','Số tiền','So tien','Phát sinh Nợ','Phat sinh No','Phát sinh Có','Phat sinh Co']);
+  }else if(type==='debt'){
+    // Công nợ tùy chỉnh: mặc định lấy Nợ nếu có, nhân viên sửa được.
+    setSelectBest('ca-tax',[],['Phát sinh Nợ','Phat sinh No','PS Nợ','PS No','Debit','Nợ','Phát sinh']);
+    setSelectBest('cb-tax',[],['Phát sinh Nợ','Phat sinh No','PS Nợ','PS No','Debit','Nợ','Phát sinh']);
+  }
+  setSelectBest('ca-des',[],['Tên đối tượng','Ten doi tuong','Đối tượng','Doi tuong','Diễn giải chung','Dien giai chung','Diễn giải','Dien giai']);
+  setSelectBest('cb-des',[],['Tên đối tượng','Ten doi tuong','Đối tượng','Doi tuong','Diễn giải chung','Dien giai chung','Diễn giải','Dien giai']);
+}
+
+function applyDefaultDisplayByReconType(type){
+  // Mặc định nhóm hiển thị theo đúng ưu tiên đối chiếu của từng loại sổ.
+  // Người dùng vẫn có thể đổi lại thủ công ở tab Ghép tay / Kết quả.
+  let mA='vendor', mB='vendor', rA='vendor', rB='vendor', sort='amount_desc';
+  if(type==='tax1331' || type==='tax33311'){
+    // Sổ thuế: ưu tiên soi theo đối tượng trước; sau đó người dùng có thể đổi sang HĐ/CT.
+    mA='vendor'; mB='vendor'; rA='vendor'; rB='vendor'; sort='amount_desc';
+  }else if(type==='debt131' || type==='debt331' || type==='debt'){
+    // Sổ công nợ: một đối tượng, khác hệ thống; soi theo số chứng từ là thuận nhất.
+    mA='num_ct'; mB='num_ct'; rA='num_ct'; rB='num_ct'; sort='amount_desc';
+  }else if(type==='debt3411'){
+    // 3411/3341: File A thường theo chứng từ, File B có thể là UNC/phiếu chi;
+    // mặc định theo số CT hai bên, người dùng có thể đổi B sang hóa đơn nếu cần.
+    mA='num_ct'; mB='num_ct'; rA='num_ct'; rB='num_ct'; sort='amount_desc';
+  }else if(type==='bank'){
+    mA='date_ct'; mB='date_ct'; rA='date_ct'; rB='date_ct'; sort='amount_desc';
+  }
+  manualGroupModeA=mA;
+  manualGroupModeB=mB;
+  manualSortMode=sort;
+  if(typeof resultGroupModeA!=='undefined'){
+    resultGroupModeA=rA;
+    resultGroupModeB=rB;
+    resultSortMode=sort;
+    try{
+      localStorage.setItem('doiChieuResultGroupA',rA);
+      localStorage.setItem('doiChieuResultGroupB',rB);
+      localStorage.setItem('doiChieuResultSort',sort);
+    }catch(e){}
+  }
+  collapsedGroups=new Set();
+  if(typeof resultCollapsedGroups!=='undefined')resultCollapsedGroups=new Set();
+}
+
+function applyReconPreset(type){
+  reconType=type;
+  const presets={
+    tax1331:['Đối tượng','Hóa đơn hoặc chứng từ','Phát sinh','Ghép theo tổng nhiều khoản'],
+    tax33311:['Đối tượng','Hóa đơn hoặc chứng từ','Phát sinh','Ghép theo tổng nhiều khoản'],
+    debt131:['Số chứng từ','TK đối ứng','Phát sinh','Ghép theo tổng nhiều khoản'],
+    debt331:['Số chứng từ','TK đối ứng','Phát sinh','Ghép theo tổng nhiều khoản'],
+    debt3411:['Số chứng từ','Hóa đơn hoặc chứng từ','Phát sinh','Ghép theo tổng nhiều khoản'],
+    debt:['Số chứng từ','TK đối ứng','Phát sinh','Ghép theo tổng nhiều khoản'],
+    bank:['Ngày chứng từ','Số chứng từ','Phát sinh','Ghép theo tổng nhiều khoản'],
+    custom:['Đối tượng','Hóa đơn hoặc chứng từ','Phát sinh','Ghép theo tổng nhiều khoản']
+  };
+  (presets[type]||presets.custom).forEach((v,i)=>{let el=document.getElementById('priority-'+(i+1)); if(el)el.value=v;});
+  applyReconColumnPreset(type);
+  applyDefaultDisplayByReconType(type);
+  savePriorityConfig();
+}
+function savePriorityConfig(){
+  priorityFields=[1,2,3,4].map(i=>document.getElementById('priority-'+i)?.value||'Không dùng');
+}
+
+function getColVals(){
+  colA.invoice=document.getElementById('ca-inv').value;
+  colA.date_ht=document.getElementById('ca-date-ht').value;
+  colA.date_ct=document.getElementById('ca-date-ct').value;
+  colA.num_ct=document.getElementById('ca-num-ct').value;
+  colA.account=document.getElementById('ca-account')?.value||'';
+  colA.desc=document.getElementById('ca-des').value;
+  colA.tax=document.getElementById('ca-tax').value;
+  colB.invoice=document.getElementById('cb-inv').value;
+  colB.date_ht=document.getElementById('cb-date-ht').value;
+  colB.date_ct=document.getElementById('cb-date-ct').value;
+  colB.num_ct=document.getElementById('cb-num-ct').value;
+  colB.account=document.getElementById('cb-account')?.value||'';
+  colB.desc=document.getElementById('cb-des').value;
+  colB.tax=document.getElementById('cb-tax').value;
+  savePriorityConfig();
+}
+
+
+function detectTotal(rows, taxCol){
+  // Tìm dòng có 1 cell EXACT = "Tổng cộng" / "Cộng" (không match nội dung diễn giải dài)
+  for(let r of rows){
+    let isTotalRow=false;
+    for(let v of Object.values(r)){
+      let s=String(v||'').trim().toUpperCase();
+      if(s==='TỔNG CỘNG'||s==='TONG CONG'){isTotalRow=true;break;}
+    }
+    if(isTotalRow){
+      let val=parseNum(r[taxCol]);
+      if(val!==0)return val;
+      let maxN=0;
+      Object.values(r).forEach(v=>{
+        let n=parseNum(v);
+        if(Math.abs(n)>Math.abs(maxN))maxN=n;
+      });
+      if(maxN!==0)return maxN;
+    }
+  }
+  return null;
+}
+
+function isAggregateRow(r, cols){
+  let inv=String(r[cols.invoice]||'').trim();
+  let desc=String(r[cols.desc]||'').trim();
+  let num=String(r[cols.num_ct]||'').trim();
+  let dateHT=String(r[cols.date_ht]||'').trim();
+  let account=String(r[cols.account]||'').trim();
+  let allText=Object.values(r).map(v=>String(v||'').trim()).filter(Boolean).join(' | ');
+  let allNorm=norm(allText);
+  let descU=desc.toUpperCase();
+  let invU=inv.toUpperCase();
+  let numU=num.toUpperCase();
+  let dateHTU=dateHT.toUpperCase();
+
+  function isTotalKeyword(s){
+    return s==='TỔNG CỘNG'||s==='TONG CONG'||s==='TỔNG'||s==='TONG'||s==='CỘNG'||s==='CONG'||s==='CỘNG PHÁT SINH'||s==='CONG PHAT SINH';
+  }
+  function isAccountHeader(s){
+    return s.startsWith('TÀI KHOẢN')||s.startsWith('TAI KHOAN');
+  }
+
+  // Quét toàn bộ dòng để loại các dòng tổng/header phụ mà cột map không bắt được.
+  // Một số sổ công nợ xuất ra dòng tổng có chữ "Tên khách hàng" ở cột đầu và số tổng ở cột phát sinh.
+  if(/(^|\|)\s*(tổng cộng|tong cong|cộng phát sinh|cong phat sinh|tổng phát sinh|tong phat sinh|số dư đầu kỳ|so du dau ky|số dư cuối kỳ|so du cuoi ky)\s*(\||$)/i.test(allText))return true;
+  if(/tài khoản|tai khoan/.test(allNorm) && allNorm.length<120)return true;
+  if(/ten khach hang|ten nha cung cap|ma khach hang|ma nha cung cap|ten doi tuong|ma doi tuong/.test(allNorm) && parseNum(r[cols.tax])!==0)return true;
+  if(/tong doi tuong|tong khach hang|tong nha cung cap/.test(allNorm))return true;
+
+  if(isTotalKeyword(invU)||isTotalKeyword(numU)||isTotalKeyword(dateHTU)||isTotalKeyword(descU))return true;
+  if(isAccountHeader(invU)||isAccountHeader(numU)||isAccountHeader(dateHTU)||isAccountHeader(descU))return true;
+  if(descU==='SỐ DƯ ĐẦU KỲ'||descU==='SO DU DAU KY'||descU==='SỐ DƯ ĐẦU KÌ')return true;
+  if(descU.startsWith('SỐ DƯ')&&descU.length<30)return true;
+
+  // Dòng có số tổng nhưng không có chứng từ, không có tài khoản, không có hóa đơn thường là dòng tổng phụ.
+  if(parseNum(r[cols.tax])!==0 && !num && !inv && !account && /tong|cong|khach hang|nha cung cap|doi tuong/.test(allNorm))return true;
+
+  if(!dateHT && !num && !inv && !desc && !account)return true;
+  return false;
+}
+
+function formatDateCell(v){
+  if(v==null||v==='')return'';
+  if(typeof v==='number'){
+    let d=new Date((v-25569)*86400*1000);
+    if(!isNaN(d.getTime())){
+      let dd=String(d.getUTCDate()).padStart(2,'0');
+      let mm=String(d.getUTCMonth()+1).padStart(2,'0');
+      let yy=d.getUTCFullYear();
+      return dd+'/'+mm+'/'+yy;
+    }
+  }
+  return String(v);
+}
+
+function runReconcile(){
+  getColVals();
+  document.getElementById('run-hint').textContent='Đang xử lý...';
+  setTimeout(()=>{
+    detectedTotalA=detectTotal(rawA, colA.tax);
+    detectedTotalB=detectTotal(rawB, colB.tax);
+
+    cleanA=rawA.filter(r=>{
+      if(isAggregateRow(r,colA))return false;
+      return parseNum(r[colA.tax])!==0;
+    }).map((r,i)=>({
+      id:'A'+i, isManual:false,
+      inv:normInv(r[colA.invoice]),
+      invRaw:String(r[colA.invoice]||''),
+      date_ht:formatDateCell(r[colA.date_ht]),
+      date_ct:formatDateCell(r[colA.date_ct]),
+      num_ct:String(r[colA.num_ct]||''),
+      account:String(r[colA.account]||''),
+      desc:String(r[colA.desc]||''),
+      vendor:extractVendor(r[colA.desc])||cleanupVendorName(r[colA.desc]),
+      tax:parseNum(r[colA.tax]),
+      raw:r
+    }));
+
+    cleanB=rawB.filter(r=>{
+      if(isAggregateRow(r,colB))return false;
+      return parseNum(r[colB.tax])!==0;
+    }).map((r,i)=>({
+      id:'B'+i, isManual:false,
+      inv:normInv(r[colB.invoice]),
+      invRaw:String(r[colB.invoice]||''),
+      date_ht:formatDateCell(r[colB.date_ht]),
+      date_ct:formatDateCell(r[colB.date_ct]),
+      num_ct:String(r[colB.num_ct]||''),
+      account:String(r[colB.account]||''),
+      desc:String(r[colB.desc]||''),
+      vendor:extractVendor(r[colB.desc])||cleanupVendorName(r[colB.desc]),
+      tax:parseNum(r[colB.tax]),
+      raw:r
+    }));
+
+    origA=cleanA.map(r=>({...r}));
+    origB=cleanB.map(r=>({...r}));
+
+    runAutoMatch();
+    undoStack=[];
+    updateUndoBtn();
+    renderResult();
+    document.getElementById('run-hint').textContent='';
+  },50);
+}
+
+
+function rowSum(rows){return rows.reduce((s,r)=>s+(r?Number(r.tax)||0:0),0);}
+function roundMoney(n){return Math.round(Number(n)||0);}
+function sumsEqual(a,b){return Math.abs((Number(a)||0)-(Number(b)||0))<1;}
+function rowsEqual(aRows,bRows){return sumsEqual(rowSum(aRows),rowSum(bRows));}
+function rowIds(rows){return rows.map(r=>r.id).sort().join('|');}
+function groupByKey(rows, fn){
+  let out={};
+  rows.forEach(r=>{let k=fn(r)||'(blank)'; if(!out[k])out[k]=[]; out[k].push(r);});
+  return out;
+}
+function addLog(type, message, detail={}){
+  matchLogs.push({time:new Date().toLocaleTimeString('vi-VN'), type, message, ...detail});
+}
+function makePair(aItems,bItems,level,reason){
+  let diff=rowSum(aItems)-rowSum(bItems);
+  pairs.push({aItems:[...aItems], bItems:[...bItems], level, diff, reason:reason||''});
+  addLog(level, reason||lvLabel[level]||level, {vendor:aItems[0]?.vendor||bItems[0]?.vendor||'', inv:[...new Set([...aItems.map(r=>r.invRaw).filter(Boolean),...bItems.map(r=>r.invRaw).filter(Boolean)])].join(', '), sumA:rowSum(aItems), sumB:rowSum(bItems), diff});
+}
+function enumerateSubsets(rows, maxRows=16){
+  let n=Math.min(rows.length,maxRows);
+  let arr=[];
+  let totalMasks=1<<n;
+  for(let mask=1; mask<totalMasks; mask++){
+    let items=[], sum=0;
+    for(let i=0;i<n;i++) if(mask&(1<<i)){items.push(rows[i]); sum+=roundMoney(rows[i].tax||0);}
+    if(sum!==0) arr.push({sum, items, count:items.length, key:rowIds(items)});
+  }
+  // Ưu tiên tổ hợp ít dòng hơn, rồi tổng tiền lớn hơn để giảm nhanh số chưa ghép.
+  arr.sort((x,y)=>x.count-y.count || Math.abs(y.sum)-Math.abs(x.sum));
+  return arr;
+}
+function findSubsetPair(aRows,bRows,maxRows=16){
+  if(!aRows.length||!bRows.length)return null;
+  if(aRows.length>maxRows || bRows.length>maxRows){
+    addLog('TO_HOP_SKIPPED','Bỏ qua Ghép theo tổng nhiều khoản vì nhóm quá nhiều dòng', {vendor:aRows[0]?.vendor||bRows[0]?.vendor||'', rowsA:aRows.length, rowsB:bRows.length});
+    return null;
+  }
+  let subB=enumerateSubsets(bRows,maxRows);
+  let mapB=new Map();
+  subB.forEach(x=>{ if(!mapB.has(x.sum)) mapB.set(x.sum,[]); mapB.get(x.sum).push(x); });
+  let subA=enumerateSubsets(aRows,maxRows);
+  let best=null;
+  for(let a of subA){
+    let bs=mapB.get(a.sum);
+    if(!bs)continue;
+    for(let b of bs){
+      // Không lấy luôn toàn bộ nhóm nếu tổng nhóm đã không bằng; ưu tiên đoạn nhỏ thực sự.
+      let score=(a.count+b.count)*100000000 - Math.abs(a.sum);
+      let cand={aItems:a.items,bItems:b.items,sum:a.sum,score};
+      if(!best || cand.score<best.score) best=cand;
+    }
+  }
+  return best;
+}
+function assignUnmatchedReasons(){
+  let allAByVendor=groupByKey(cleanA,r=>norm(r.vendor));
+  let allBByVendor=groupByKey(cleanB,r=>norm(r.vendor));
+  let allAByInv=groupByKey(cleanA,r=>r.inv);
+  let allBByInv=groupByKey(cleanB,r=>r.inv);
+  unmatchedA.forEach(r=>{
+    if((allBByVendor[norm(r.vendor)]||[]).length) r.reason='Cùng đối tượng nhưng chưa tìm được hóa đơn/tổ hợp bằng tiền chính xác';
+    else if(r.inv && (allBByInv[r.inv]||[]).length) r.reason='Có cùng số hóa đơn ở File B nhưng khác đối tượng hoặc lệch tổng tiền';
+    else r.reason='Không tìm thấy đối tượng/hóa đơn tương ứng ở File B';
+  });
+  unmatchedB.forEach(r=>{
+    if((allAByVendor[norm(r.vendor)]||[]).length) r.reason='Cùng đối tượng nhưng chưa tìm được hóa đơn/tổ hợp bằng tiền chính xác';
+    else if(r.inv && (allAByInv[r.inv]||[]).length) r.reason='Có cùng số hóa đơn ở File A nhưng khác đối tượng hoặc lệch tổng tiền';
+    else r.reason='Không tìm thấy đối tượng/hóa đơn tương ứng ở File A';
+  });
+}
+
+function accountRoot(acct){
+  let a=String(acct||'').replace(/\D/g,'');
+  if(!a)return '(no_account)';
+  if(a.startsWith('33311'))return '33311';
+  if(a.startsWith('5112'))return '5112';
+  if(a.startsWith('511'))return '511';
+  if(a.startsWith('131'))return '131';
+  if(a.startsWith('331'))return '331';
+  if(a.startsWith('112'))return '112';
+  if(a.startsWith('111'))return '111';
+  if(a.length>4)return a.slice(0,4);
+  return a;
+}
+function detailSignature(rows){
+  let parts=rows.map(r=>accountRoot(r.account)+'@'+roundMoney(r.tax)).sort();
+  return parts.join('|');
+}
+function buildDocGroups(rows, side){
+  let specs=[];
+  const keys=[
+    ['num_ct', r=>String(r.num_ct||'').trim()],
+    ['invoice', r=>String(r.inv||'').trim()]
+  ];
+  for(let [kind, fn] of keys){
+    let g=groupByKey(rows.filter(r=>fn(r)), fn);
+    Object.keys(g).forEach(k=>{
+      let items=g[k];
+      if(!items.length)return;
+      specs.push({side, kind, key:k, items, sum:rowSum(items), sig:detailSignature(items)});
+    });
+  }
+  return specs;
+}
+function matchCompositeDocumentGroups(usedA, usedB){
+  let aGroups=buildDocGroups(cleanA.filter(r=>!usedA.has(r.id)), 'A');
+  let bGroups=buildDocGroups(cleanB.filter(r=>!usedB.has(r.id)), 'B');
+  let candidates=[];
+  for(let a of aGroups){
+    for(let b of bGroups){
+      if(!rowsEqual(a.items,b.items))continue;
+      if(a.sig!==b.sig)continue;
+      // Ưu tiên case A số CT ↔ B hóa đơn hoặc ngược lại, sau đó cùng kiểu.
+      let cross=(a.kind!==b.kind)?0:1;
+      candidates.push({a,b,score:cross*1000 + a.items.length + b.items.length});
+    }
+  }
+  candidates.sort((x,y)=>x.score-y.score);
+  let usedGroupA=new Set(), usedGroupB=new Set();
+  for(let c of candidates){
+    let aIds=rowIds(c.a.items), bIds=rowIds(c.b.items);
+    if(usedGroupA.has(aIds)||usedGroupB.has(bIds))continue;
+    if(c.a.items.some(r=>usedA.has(r.id))||c.b.items.some(r=>usedB.has(r.id)))continue;
+    makePair(c.a.items,c.b.items,'doc_detail_total',`Ghép cụm ${c.a.kind==='num_ct'?'Số chứng từ':'Số hóa đơn'} ↔ ${c.b.kind==='num_ct'?'Số chứng từ':'Số hóa đơn'}: tổng tiền và chi tiết TK đối ứng khớp`);
+    c.a.items.forEach(r=>usedA.add(r.id)); c.b.items.forEach(r=>usedB.add(r.id));
+    usedGroupA.add(aIds); usedGroupB.add(bIds);
+  }
+}
+
+
+
+// ===== V4.6: Ghép chứng từ/hóa đơn theo tổng nhóm và subset nhóm chứng từ =====
+function buildDocMatchGroups(rows, side){
+  let specs=[];
+  const keys=[
+    ['num_ct', r=>String(r.num_ct||'').trim()],
+    ['invoice', r=>String(r.inv||'').trim()]
+  ];
+  let seen=new Set();
+  for(let [kind, fn] of keys){
+    let g=groupByKey(rows.filter(r=>fn(r)), fn);
+    Object.keys(g).forEach(k=>{
+      let items=g[k];
+      if(!items.length)return;
+      let rid=rowIds(items);
+      let dedupeKey=kind+'::'+k+'::'+rid;
+      if(seen.has(dedupeKey))return;
+      seen.add(dedupeKey);
+      specs.push({side, kind, key:k, label:(kind==='num_ct'?'Số CT ':'Số HĐ ')+k, items, rowKey:rid, sum:rowSum(items), rsum:roundMoney(rowSum(items)), sig:detailSignature(items)});
+    });
+  }
+  // Nhóm lớn trước để giảm nhanh phần chưa khớp
+  specs.sort((a,b)=>Math.abs(b.sum)-Math.abs(a.sum) || a.items.length-b.items.length);
+  return specs;
+}
+function docGroupKindLabel(g){return g.kind==='num_ct'?'Số chứng từ':'Số hóa đơn';}
+function groupHasUsedRows(g, used){return g.items.some(r=>used.has(r.id));}
+function findGroupSubsetForTarget(target, candidates, maxGroups=18){
+  let targetSum=roundMoney(target.sum);
+  if(!targetSum)return null;
+  let sign=targetSum>0?1:-1;
+  let cand=candidates
+    .filter(g=>roundMoney(g.sum)*sign>0 && Math.abs(roundMoney(g.sum))<=Math.abs(targetSum))
+    .sort((a,b)=>Math.abs(roundMoney(b.sum))-Math.abs(roundMoney(a.sum)));
+  if(cand.length>maxGroups){
+    addLog('TO_HOP_NHOM_SKIPPED','Bỏ qua ghép theo tổng nhiều khoản ở cấp nhóm chứng từ: '+cand.length+' nhóm > giới hạn '+maxGroups, {vendor:target.items?.[0]?.vendor||'', rowsA:target.items?.length||'', rowsB:cand.length});
+    // Ưu tiên nhóm có ngày/phiếu gần nhau thông qua thứ tự đang hiển thị; tránh nổ tổ hợp.
+    cand=cand.slice(0,maxGroups);
+  }
+  let best=null;
+  function dfs(start, sum, picked, usedRowIds){
+    if(best)return;
+    if(sumsEqual(sum,targetSum) && picked.length>=2){best=[...picked];return;}
+    if((targetSum>0 && sum>targetSum) || (targetSum<0 && sum<targetSum))return;
+    for(let i=start;i<cand.length;i++){
+      let g=cand[i];
+      let overlap=false;
+      for(let r of g.items){if(usedRowIds.has(r.id)){overlap=true;break;}}
+      if(overlap)continue;
+      let nextIds=new Set(usedRowIds);
+      g.items.forEach(r=>nextIds.add(r.id));
+      dfs(i+1, sum+roundMoney(g.sum), [...picked,g], nextIds);
+      if(best)return;
+    }
+  }
+  dfs(0,0,[],new Set());
+  return best;
+}
+function matchDocumentGroupSubsets(usedA, usedB){
+  let aGroups=buildDocMatchGroups(cleanA.filter(r=>!usedA.has(r.id)), 'A');
+  let bGroups=buildDocMatchGroups(cleanB.filter(r=>!usedB.has(r.id)), 'B');
+
+  // 1) Ghép một nhóm A với một nhóm B nếu tổng bằng nhau và không chồng dòng.
+  // Nếu có nhiều ứng viên cùng tổng thì ưu tiên cặp có chi tiết TK+tiền giống nhau; nếu vẫn trùng, để lại manual để tránh ghép nhầm.
+  let candidates=[];
+  for(let a of aGroups){
+    for(let b of bGroups){
+      if(!sumsEqual(a.sum,b.sum))continue;
+      let sameSig=a.sig && b.sig && a.sig===b.sig;
+      let crossKind=a.kind!==b.kind?0:1;
+      candidates.push({a,b,sameSig,score:(sameSig?0:10000)+crossKind*1000+Math.abs(a.items.length-b.items.length)*10});
+    }
+  }
+  candidates.sort((x,y)=>x.score-y.score);
+  for(let c of candidates){
+    if(groupHasUsedRows(c.a,usedA)||groupHasUsedRows(c.b,usedB))continue;
+    // Auto nếu chi tiết giống hoặc số tổng này chỉ có duy nhất 1 nhóm khả dụng mỗi bên.
+    let sameSumA=aGroups.filter(g=>!groupHasUsedRows(g,usedA)&&sumsEqual(g.sum,c.a.sum)).length;
+    let sameSumB=bGroups.filter(g=>!groupHasUsedRows(g,usedB)&&sumsEqual(g.sum,c.b.sum)).length;
+    if(!c.sameSig && !(sameSumA===1 && sameSumB===1))continue;
+    makePair(c.a.items,c.b.items,'doc_sum_total',`Ghép cụm ${docGroupKindLabel(c.a)} ↔ ${docGroupKindLabel(c.b)}: tổng tiền bằng nhau${c.sameSig?' và chi tiết TK đối ứng khớp':''}`);
+    c.a.items.forEach(r=>usedA.add(r.id)); c.b.items.forEach(r=>usedB.add(r.id));
+  }
+
+  // 2) Ghép 1 nhóm A = tổng nhiều nhóm B, và 1 nhóm B = tổng nhiều nhóm A.
+  let loop=0, changed=true;
+  while(changed && loop++<30){
+    changed=false;
+    aGroups=buildDocMatchGroups(cleanA.filter(r=>!usedA.has(r.id)), 'A');
+    bGroups=buildDocMatchGroups(cleanB.filter(r=>!usedB.has(r.id)), 'B');
+    // A target = subset B
+    for(let a of aGroups){
+      if(groupHasUsedRows(a,usedA))continue;
+      let subset=findGroupSubsetForTarget(a, bGroups.filter(g=>!groupHasUsedRows(g,usedB)), 18);
+      if(subset){
+        let bItems=subset.flatMap(g=>g.items);
+        makePair(a.items,bItems,'doc_subset_group',`Ghép ${docGroupKindLabel(a)} File A = tổng ${subset.length} cụm File B (${subset.map(g=>g.label).join(', ')})`);
+        a.items.forEach(r=>usedA.add(r.id)); bItems.forEach(r=>usedB.add(r.id)); changed=true; break;
+      }
+    }
+    if(changed)continue;
+    aGroups=buildDocMatchGroups(cleanA.filter(r=>!usedA.has(r.id)), 'A');
+    bGroups=buildDocMatchGroups(cleanB.filter(r=>!usedB.has(r.id)), 'B');
+    for(let b of bGroups){
+      if(groupHasUsedRows(b,usedB))continue;
+      let subset=findGroupSubsetForTarget(b, aGroups.filter(g=>!groupHasUsedRows(g,usedA)), 18);
+      if(subset){
+        let aItems=subset.flatMap(g=>g.items);
+        makePair(aItems,b.items,'doc_subset_group',`Ghép ${docGroupKindLabel(b)} File B = tổng ${subset.length} cụm File A (${subset.map(g=>g.label).join(', ')})`);
+        aItems.forEach(r=>usedA.add(r.id)); b.items.forEach(r=>usedB.add(r.id)); changed=true; break;
+      }
+    }
+  }
+}
+
+// ===== V4.7: ghép chứng từ/hóa đơn theo tổng tiền mạnh hơn cho sổ 3411/3341, 131/331 =====
+function uniqueDocGroupsByRows(groups){
+  let map=new Map();
+  groups.forEach(g=>{
+    if(!g.items.length)return;
+    let k=g.rowKey||rowIds(g.items);
+    let old=map.get(k);
+    // Ưu tiên nhóm có số dòng >1, rồi ưu tiên Số chứng từ; nếu không thì giữ nhóm đầu tiên.
+    if(!old || (g.items.length>old.items.length) || (g.kind==='num_ct' && old.kind!=='num_ct')) map.set(k,g);
+  });
+  return Array.from(map.values());
+}
+function isDebtLikeRecon(){
+  return ['debt3411','debt131','debt331','debt','bank','custom'].includes(reconType);
+}
+function matchDocumentGroupGreedyByAmount(usedA, usedB){
+  if(!isDebtLikeRecon())return;
+  let aGroups=uniqueDocGroupsByRows(buildDocMatchGroups(cleanA.filter(r=>!usedA.has(r.id)), 'A'));
+  let bGroups=uniqueDocGroupsByRows(buildDocMatchGroups(cleanB.filter(r=>!usedB.has(r.id)), 'B'));
+  let amounts=new Set([...aGroups.map(g=>String(roundMoney(g.sum))),...bGroups.map(g=>String(roundMoney(g.sum)))]);
+  amounts.forEach(amount=>{
+    let aList=aGroups.filter(g=>!groupHasUsedRows(g,usedA)&&String(roundMoney(g.sum))===amount);
+    let bList=bGroups.filter(g=>!groupHasUsedRows(g,usedB)&&String(roundMoney(g.sum))===amount);
+    if(!aList.length||!bList.length)return;
+    let candidates=[];
+    aList.forEach(a=>bList.forEach(b=>{
+      if(!rowsEqual(a.items,b.items))return;
+      let sameSig=a.sig&&b.sig&&a.sig===b.sig;
+      let crossKind=a.kind!==b.kind;
+      // Điểm thấp hơn tốt hơn: ưu tiên chi tiết TK giống, nhóm nhiều dòng, số dòng gần nhau, khác mã CT/HĐ vẫn ghép được.
+      let score=(sameSig?0:5000)+(crossKind?0:250)+Math.abs(a.items.length-b.items.length)*20-(Math.min(a.items.length,b.items.length)*5);
+      candidates.push({a,b,sameSig,score});
+    }));
+    candidates.sort((x,y)=>x.score-y.score);
+    for(let c of candidates){
+      if(groupHasUsedRows(c.a,usedA)||groupHasUsedRows(c.b,usedB))continue;
+      makePair(c.a.items,c.b.items,'doc_amount_greedy',`Ghép mạnh theo tổng cụm ${docGroupKindLabel(c.a)} ↔ ${docGroupKindLabel(c.b)}: tổng tiền bằng nhau${c.sameSig?' và chi tiết TK khớp':' (khác mã chứng từ/hóa đơn)'}`);
+      c.a.items.forEach(r=>usedA.add(r.id)); c.b.items.forEach(r=>usedB.add(r.id));
+    }
+  });
+}
+function matchGlobalLineGreedyByAmount(usedA, usedB){
+  if(!isDebtLikeRecon())return;
+  let aRows=cleanA.filter(r=>!usedA.has(r.id));
+  let bRows=cleanB.filter(r=>!usedB.has(r.id));
+  let aMap=groupByKey(aRows,r=>accountRoot(r.account)+'::'+roundMoney(r.tax));
+  let bMap=groupByKey(bRows,r=>accountRoot(r.account)+'::'+roundMoney(r.tax));
+  let keys=new Set([...Object.keys(aMap),...Object.keys(bMap)]);
+  keys.forEach(k=>{
+    let aa=(aMap[k]||[]).filter(r=>!usedA.has(r.id));
+    let bb=(bMap[k]||[]).filter(r=>!usedB.has(r.id));
+    if(!aa.length||!bb.length)return;
+    aa.sort((x,y)=>String(x.date_ct||x.date_ht).localeCompare(String(y.date_ct||y.date_ht)) || String(x.num_ct).localeCompare(String(y.num_ct)));
+    bb.sort((x,y)=>String(x.date_ct||x.date_ht).localeCompare(String(y.date_ct||y.date_ht)) || String(x.num_ct).localeCompare(String(y.num_ct)));
+    let n=Math.min(aa.length,bb.length);
+    // Ghép tuần tự các dòng cùng TK gốc + cùng tiền, không yêu cầu cùng số chứng từ vì 2 hệ thống mã khác nhau.
+    for(let i=0;i<n;i++){
+      if(usedA.has(aa[i].id)||usedB.has(bb[i].id))continue;
+      makePair([aa[i]],[bb[i]],'line_global_account','Ghép dòng toàn cục: cùng TK đối ứng gốc + cùng số tiền');
+      usedA.add(aa[i].id); usedB.add(bb[i].id);
+    }
+  });
+  // Sau đó ghép dòng cùng tiền nếu số tiền còn lại là duy nhất mỗi bên.
+  aRows=cleanA.filter(r=>!usedA.has(r.id));
+  bRows=cleanB.filter(r=>!usedB.has(r.id));
+  aMap=groupByKey(aRows,r=>String(roundMoney(r.tax)));
+  bMap=groupByKey(bRows,r=>String(roundMoney(r.tax)));
+  keys=new Set([...Object.keys(aMap),...Object.keys(bMap)]);
+  keys.forEach(k=>{
+    let aa=(aMap[k]||[]).filter(r=>!usedA.has(r.id));
+    let bb=(bMap[k]||[]).filter(r=>!usedB.has(r.id));
+    if(aa.length===1&&bb.length===1&&rowsEqual(aa,bb)){
+      makePair(aa,bb,'line_global_amount','Ghép dòng toàn cục: cùng số tiền duy nhất còn lại');
+      usedA.add(aa[0].id); usedB.add(bb[0].id);
+    }
+  });
+}
+
+function runAutoMatch(lockedPairs=[]){
+  pairs=[];
+  matchLogs=[];
+  let usedA=new Set(), usedB=new Set();
+  (lockedPairs||[]).forEach(p=>{
+    pairs.push({...p,aItems:[...p.aItems],bItems:[...p.bItems]});
+    p.aItems.forEach(r=>usedA.add(r.id));
+    p.bItems.forEach(r=>usedB.add(r.id));
+    addLog('MANUAL_LOCKED','Giữ nguyên cặp ghép tay khi chạy lại Auto Match', {vendor:p.aItems[0]?.vendor||p.bItems[0]?.vendor||'', sumA:rowSum(p.aItems), sumB:rowSum(p.bItems), diff:rowSum(p.aItems)-rowSum(p.bItems)});
+  });
+
+  // Mức 1: cùng NCC, tổng toàn bộ bằng nhau.
+  let groupsA=groupByKey(cleanA.filter(r=>!usedA.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  let groupsB=groupByKey(cleanB.filter(r=>!usedB.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  let allKeys=new Set([...Object.keys(groupsA),...Object.keys(groupsB)]);
+  for(let k of allKeys){
+    let aRows=(groupsA[k]||[]).filter(r=>!usedA.has(r.id));
+    let bRows=(groupsB[k]||[]).filter(r=>!usedB.has(r.id));
+    if(!aRows.length||!bRows.length)continue;
+    let sumA=rowSum(aRows), sumB=rowSum(bRows);
+    if(sumsEqual(sumA,sumB)){
+      makePair(aRows,bRows,'vendor_total','Tổng theo đối tượng bằng nhau chính xác');
+      aRows.forEach(r=>usedA.add(r.id)); bRows.forEach(r=>usedB.add(r.id));
+    }
+  }
+
+  // Mức 2: trong cùng NCC, cùng số hóa đơn, tổng hóa đơn bằng nhau.
+  groupsA=groupByKey(cleanA.filter(r=>!usedA.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  groupsB=groupByKey(cleanB.filter(r=>!usedB.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  allKeys=new Set([...Object.keys(groupsA),...Object.keys(groupsB)]);
+  for(let k of allKeys){
+    let aRows=groupsA[k]||[], bRows=groupsB[k]||[];
+    if(!aRows.length||!bRows.length)continue;
+    let invA=groupByKey(aRows.filter(r=>r.inv), r=>r.inv);
+    let invB=groupByKey(bRows.filter(r=>r.inv), r=>r.inv);
+    let invs=new Set([...Object.keys(invA),...Object.keys(invB)]);
+    for(let inv of invs){
+      let aInv=(invA[inv]||[]).filter(r=>!usedA.has(r.id));
+      let bInv=(invB[inv]||[]).filter(r=>!usedB.has(r.id));
+      if(!aInv.length||!bInv.length)continue;
+      if(rowsEqual(aInv,bInv)){
+        makePair(aInv,bInv,'invoice_total','Cùng đối tượng + cùng số hóa đơn + tổng tiền bằng nhau chính xác');
+        aInv.forEach(r=>usedA.add(r.id)); bInv.forEach(r=>usedB.add(r.id));
+      }else{
+        addLog('AMOUNT_MISMATCH','Cùng đối tượng + cùng số hóa đơn nhưng lệch tiền, để lại ghép tay', {vendor:aInv[0]?.vendor||bInv[0]?.vendor||'', inv, sumA:rowSum(aInv), sumB:rowSum(bInv), diff:rowSum(aInv)-rowSum(bInv)});
+      }
+    }
+  }
+
+  // Mức 3: cùng số hóa đơn + tổng tiền bằng nhau, kể cả lệch đối tượng. Có thể tắt vì rủi ro trùng số HĐ giữa nhiều NCC.
+  let allowCrossVendor = document.getElementById('opt-cross-vendor') ? document.getElementById('opt-cross-vendor').checked : true;
+  if(allowCrossVendor){
+  let remA=cleanA.filter(r=>!usedA.has(r.id) && r.inv);
+  let remB=cleanB.filter(r=>!usedB.has(r.id) && r.inv);
+  let invA=groupByKey(remA,r=>r.inv), invB=groupByKey(remB,r=>r.inv);
+  let invs=new Set([...Object.keys(invA),...Object.keys(invB)]);
+  for(let inv of invs){
+    let aInv=(invA[inv]||[]).filter(r=>!usedA.has(r.id));
+    let bInv=(invB[inv]||[]).filter(r=>!usedB.has(r.id));
+    if(!aInv.length||!bInv.length)continue;
+    if(rowsEqual(aInv,bInv)){
+      makePair(aInv,bInv,'invoice_cross_vendor','Cùng số hóa đơn + tổng tiền bằng nhau; đối tượng khác nhau, nghi hạch toán lệch đối tượng');
+      aInv.forEach(r=>usedA.add(r.id)); bInv.forEach(r=>usedB.add(r.id));
+    }
+  }
+
+  }else{ addLog('CROSS_VENDOR_OFF','Đã tắt khớp cùng số hóa đơn khác đối tượng',{}); }
+
+
+
+  // Mức 4: ghép cụm chứng từ/hóa đơn có cùng tổng và cùng cấu trúc chi tiết TK đối ứng + tiền.
+  // Dùng tốt cho sổ công nợ: File A có thể nhóm theo Số chứng từ, File B có thể nhóm theo Số hóa đơn.
+  matchCompositeDocumentGroups(usedA, usedB);
+  // V4.6: thêm lớp ghép cụm theo tổng, kể cả 1 chứng từ = tổng nhiều chứng từ/hóa đơn bên kia.
+  matchDocumentGroupSubsets(usedA, usedB);
+  // V4.7: ghép thêm các cụm trùng tổng, kể cả nhiều mã CT/HĐ khác nhau; sau đó ghép dòng cùng TK+tiền toàn cục.
+  matchDocumentGroupGreedyByAmount(usedA, usedB);
+  matchGlobalLineGreedyByAmount(usedA, usedB);
+
+  // Mức 5: trong cùng đối tượng, ghép từng dòng cùng TK đối ứng + cùng số tiền nếu là cặp duy nhất.
+  groupsA=groupByKey(cleanA.filter(r=>!usedA.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  groupsB=groupByKey(cleanB.filter(r=>!usedB.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  allKeys=new Set([...Object.keys(groupsA),...Object.keys(groupsB)]);
+  for(let k of allKeys){
+    let aRows=(groupsA[k]||[]).filter(r=>!usedA.has(r.id));
+    let bRows=(groupsB[k]||[]).filter(r=>!usedB.has(r.id));
+    if(!aRows.length||!bRows.length)continue;
+    let keyFn=r=>(norm(r.account)||'(no_account)')+'::'+roundMoney(r.tax);
+    let ak=groupByKey(aRows,keyFn), bk=groupByKey(bRows,keyFn);
+    for(let kk of new Set([...Object.keys(ak),...Object.keys(bk)])){
+      let aa=(ak[kk]||[]).filter(r=>!usedA.has(r.id));
+      let bb=(bk[kk]||[]).filter(r=>!usedB.has(r.id));
+      if(aa.length===1 && bb.length===1 && rowsEqual(aa,bb)){
+        makePair(aa,bb,'line_exact_account','Trong cùng đối tượng: cùng TK đối ứng + cùng số tiền, mỗi bên chỉ có 1 dòng');
+        aa.forEach(r=>usedA.add(r.id)); bb.forEach(r=>usedB.add(r.id));
+      }else if(aa.length&&bb.length){
+        addLog('LINE_AMOUNT_DUPLICATE','Có dòng cùng TK đối ứng + cùng số tiền nhưng không tự ghép vì có nhiều ứng viên', {vendor:aa[0]?.vendor||bb[0]?.vendor||'', sumA:aa.reduce((s,r)=>s+1,0), sumB:bb.reduce((s,r)=>s+1,0)});
+      }
+    }
+  }
+
+  // Mức 5: trong cùng đối tượng, ghép từng dòng cùng số tiền nếu là cặp duy nhất (không cần số CT/HĐ giống nhau).
+  groupsA=groupByKey(cleanA.filter(r=>!usedA.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  groupsB=groupByKey(cleanB.filter(r=>!usedB.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  allKeys=new Set([...Object.keys(groupsA),...Object.keys(groupsB)]);
+  for(let k of allKeys){
+    let aRows=(groupsA[k]||[]).filter(r=>!usedA.has(r.id));
+    let bRows=(groupsB[k]||[]).filter(r=>!usedB.has(r.id));
+    if(!aRows.length||!bRows.length)continue;
+    let ak=groupByKey(aRows,r=>String(roundMoney(r.tax))), bk=groupByKey(bRows,r=>String(roundMoney(r.tax)));
+    for(let kk of new Set([...Object.keys(ak),...Object.keys(bk)])){
+      let aa=(ak[kk]||[]).filter(r=>!usedA.has(r.id));
+      let bb=(bk[kk]||[]).filter(r=>!usedB.has(r.id));
+      if(aa.length===1 && bb.length===1 && rowsEqual(aa,bb)){
+        makePair(aa,bb,'line_exact_amount','Trong cùng đối tượng: cùng số tiền, mỗi bên chỉ có 1 dòng');
+        aa.forEach(r=>usedA.add(r.id)); bb.forEach(r=>usedB.add(r.id));
+      }else if(aa.length&&bb.length){
+        addLog('LINE_AMOUNT_DUPLICATE','Có dòng cùng số tiền trong cùng đối tượng nhưng không tự ghép vì có nhiều ứng viên', {vendor:aa[0]?.vendor||bb[0]?.vendor||'', amount:kk, candidatesA:aa.length, candidatesB:bb.length});
+      }
+    }
+  }
+
+  // Mức 6: Ghép theo tổng nhiều khoản trong cùng đối tượng, khớp tuyệt đối theo tổng tiền.
+  groupsA=groupByKey(cleanA.filter(r=>!usedA.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  groupsB=groupByKey(cleanB.filter(r=>!usedB.has(r.id)), r=>norm(r.vendor)||'(no_vendor)');
+  allKeys=new Set([...Object.keys(groupsA),...Object.keys(groupsB)]);
+  for(let k of allKeys){
+    let loopGuard=0;
+    while(loopGuard++<20){
+      let aRows=(groupsA[k]||[]).filter(r=>!usedA.has(r.id));
+      let bRows=(groupsB[k]||[]).filter(r=>!usedB.has(r.id));
+      if(!aRows.length||!bRows.length)break;
+      let cand=findSubsetPair(aRows,bRows,16);
+      if(!cand)break;
+      makePair(cand.aItems,cand.bItems,'subset_sum','Ghép theo tổng nhiều khoản trong cùng đối tượng: cộng nhiều dòng để khớp chính xác');
+      cand.aItems.forEach(r=>usedA.add(r.id)); cand.bItems.forEach(r=>usedB.add(r.id));
+    }
+  }
+
+  unmatchedA=cleanA.filter(r=>!usedA.has(r.id));
+  unmatchedB=cleanB.filter(r=>!usedB.has(r.id));
+  assignUnmatchedReasons();
+  unmatchedA.forEach(r=>addLog('UNMATCHED_A',r.reason,{vendor:r.vendor,inv:r.invRaw,sumA:r.tax}));
+  unmatchedB.forEach(r=>addLog('UNMATCHED_B',r.reason,{vendor:r.vendor,inv:r.invRaw,sumB:r.tax}));
+  sortByVendor(unmatchedA,'vendor');
+  sortByVendor(unmatchedB,'vendor');
+}
+
+function rerunAutoMatchKeepManual(){
+  if(!cleanA.length&&!cleanB.length){alert('Chưa có dữ liệu để chạy lại.');return;}
+  snapshot('Re-run Auto Match');
+  let locked=pairs.filter(p=>p.level==='manual').map(p=>({...p,aItems:[...p.aItems],bItems:[...p.bItems]}));
+  runAutoMatch(locked);
+  selA.clear(); selB.clear();
+  renderResult();
+}
+function sortByVendor(arr, key){
+  arr.sort((x,y)=>{
+    let nx=norm(x[key]||x.desc||''),ny=norm(y[key]||y.desc||'');
+    let c=nx.localeCompare(ny);
+    if(c!==0)return c;
+    return (x.inv||'').localeCompare(y.inv||'');
+  });
+}
+
+const lvLabel={vendor_total:'Khớp theo đối tượng',invoice_total:'Khớp theo hóa đơn',invoice_cross_vendor:'Khớp hóa đơn khác đối tượng',doc_detail_total:'Khớp theo chứng từ',doc_sum_total:'Khớp tổng chứng từ',doc_subset_group:'Ghép tổng nhiều chứng từ',doc_amount_greedy:'Khớp cụm cùng tiền',line_global_account:'Khớp theo tài khoản và số tiền',line_global_amount:'Khớp theo số tiền',line_exact_account:'Khớp chi tiết theo tài khoản',line_exact_amount:'Khớp chi tiết theo số tiền',subset_sum:'Ghép theo tổng nhiều khoản',manual:'Ghép tay'};
+const confidenceMap={vendor_total:'high',invoice_total:'high',doc_detail_total:'high',line_exact_account:'high',manual:'high',doc_sum_total:'mid',doc_subset_group:'mid',subset_sum:'mid',line_exact_amount:'mid',doc_amount_greedy:'low',invoice_cross_vendor:'low',line_global_account:'low',line_global_amount:'low'};
+const confLabel={high:'Cao',mid:'Trung bình',low:'Thấp'};
+const riskLabelMap={high:'Khớp định danh rõ, rủi ro thấp',mid:'Khớp theo tổng/tổ hợp, cần kiểm tra nếu số tiền phổ biến',low:'Ghép theo tiền hoặc định danh yếu, cần soi lại'};
+const excelWarning={high:'✓ Rủi ro thấp',mid:'⚠ Cần kiểm tra',low:'‼ Cần soi kỹ'};
+function pairConfidence(p){return confidenceMap[p?.level]||'mid';}
+function confidenceBadge(conf){let c=conf||'mid';let cls=c==='high'?'conf-high':(c==='low'?'conf-low':'conf-mid');let icon=c==='high'?'🟢':(c==='low'?'🟠':'🟡');return `<span class="conf-badge ${cls}">${icon} ${confLabel[c]}</span>`;}
+function pairRiskText(p){return riskLabelMap[pairConfidence(p)]||riskLabelMap.mid;}
+function pairWarningText(p){return excelWarning[pairConfidence(p)]||excelWarning.mid;}
+
+// ───── UNDO ─────
+function snapshot(action){
+  undoStack.push({
+    action,
+    cleanA:cleanA.map(r=>({...r})),
+    cleanB:cleanB.map(r=>({...r})),
+    pairs:pairs.map(p=>({...p,aItems:[...p.aItems],bItems:[...p.bItems]})),
+    unmatchedA:[...unmatchedA],
+    unmatchedB:[...unmatchedB],
+    matchLogs:matchLogs.map(x=>({...x}))
+  });
+  if(undoStack.length>MAX_UNDO)undoStack.shift();
+  updateUndoBtn();
+}
+function undoAction(){
+  if(!undoStack.length){alert('Không có gì để hoàn tác');return;}
+  let s=undoStack.pop();
+  cleanA=s.cleanA;cleanB=s.cleanB;
+  pairs=s.pairs;
+  unmatchedA=s.unmatchedA;unmatchedB=s.unmatchedB;matchLogs=s.matchLogs||[];
+  updateUndoBtn();renderResult();
+}
+function updateUndoBtn(){
+  let btn=document.getElementById('btn-undo');
+  if(!btn)return;
+  if(undoStack.length){btn.disabled=false;btn.style.opacity='1';btn.textContent='↶ Hoàn tác ('+undoStack.length+')';}
+  else{btn.disabled=true;btn.style.opacity='.5';btn.textContent='↶ Hoàn tác';}
+}
+function resetToOriginal(){
+  if(!confirm('Quay lại trạng thái ban đầu khi upload file? Mọi thay đổi sẽ bị xóa.'))return;
+  cleanA=origA.map(r=>({...r}));
+  cleanB=origB.map(r=>({...r}));
+  runAutoMatch();undoStack=[];updateUndoBtn();renderResult();
+}
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoAction();}
+});
+
+// ───── ADD/DELETE ROW ─────
+function addManualRow(side){
+  let prefix=side==='a'?'add-a-':'add-b-';
+  let inv=document.getElementById(prefix+'inv').value.trim();
+  let dateHT=document.getElementById(prefix+'date-ht').value.trim();
+  let dateCT=document.getElementById(prefix+'date-ct').value.trim();
+  let numCT=document.getElementById(prefix+'num').value.trim();
+  let desc=document.getElementById(prefix+'desc').value.trim();
+  let tax=parseNum(document.getElementById(prefix+'tax').value.trim());
+  if(!inv&&!dateHT&&!dateCT&&!numCT&&!desc&&!tax){alert('Vui lòng điền ít nhất 1 thông tin');return;}
+  snapshot('Thêm dòng '+side.toUpperCase());
+  let newRow={
+    id:side.toUpperCase()+'_M'+(nextManualId++), isManual:true,
+    inv:normInv(inv), invRaw:inv,
+    date_ht:dateHT, date_ct:dateCT, num_ct:numCT,
+    desc, vendor:extractVendor(desc)||cleanupVendorName(desc)||desc, tax, raw:{}
+  };
+  if(side==='a'){cleanA.push(newRow);unmatchedA.push(newRow);sortByVendor(unmatchedA,'vendor');}
+  else{cleanB.push(newRow);unmatchedB.push(newRow);sortByVendor(unmatchedB,'vendor');}
+  ['inv','date-ht','date-ct','num','desc','tax'].forEach(f=>document.getElementById(prefix+f).value='');
+  let locked=pairs.filter(p=>p.level==='manual').map(p=>({...p,aItems:[...p.aItems],bItems:[...p.bItems]}));
+  runAutoMatch(locked);
+  renderResult();
+}
+
+function deleteInputRow(side,id){
+  if(!confirm('Xóa dòng này?'))return;
+  snapshot('Xóa dòng '+side.toUpperCase());
+  if(side==='a'){
+    cleanA=cleanA.filter(r=>r.id!==id);
+    unmatchedA=unmatchedA.filter(r=>r.id!==id);
+    pairs=pairs.map(p=>({...p,aItems:p.aItems.filter(r=>r.id!==id)}));
+    pairs.forEach(p=>{if(!p.aItems.length)p.bItems.forEach(b=>unmatchedB.push(b));});
+    pairs=pairs.filter(p=>p.aItems.length&&p.bItems.length);
+    sortByVendor(unmatchedB,'vendor');
+  }else{
+    cleanB=cleanB.filter(r=>r.id!==id);
+    unmatchedB=unmatchedB.filter(r=>r.id!==id);
+    pairs=pairs.map(p=>({...p,bItems:p.bItems.filter(r=>r.id!==id)}));
+    pairs.forEach(p=>{if(!p.bItems.length)p.aItems.forEach(a=>unmatchedA.push(a));});
+    pairs=pairs.filter(p=>p.aItems.length&&p.bItems.length);
+    sortByVendor(unmatchedA,'vendor');
+  }
+  renderResult();
+}
+
+// ───── RENDER ─────
+function renderResult(){
+  document.getElementById('step-upload').style.display='none';
+  document.getElementById('step-result').style.display='block';
+  let totalA=cleanA.reduce((s,r)=>s+r.tax,0);
+  let totalB=cleanB.reduce((s,r)=>s+r.tax,0);
+  let diff=totalA-totalB;
+  let autoCount=pairs.filter(p=>p.level!=='manual').length;
+  document.getElementById('summary-bar').innerHTML=`
+    <div class="metric"><div class="metric-label">Đã khớp tự động</div><div class="metric-val" style="color:#1D9E75">${autoCount}</div></div>
+    <div class="metric"><div class="metric-label">Chưa khớp (A / B)</div><div class="metric-val" style="color:#E24B4A;font-size:18px">${unmatchedA.length} / ${unmatchedB.length}</div></div>
+    <div class="metric"><div class="metric-label">Ghép tay</div><div class="metric-val" style="color:#888">${pairs.filter(p=>p.level==='manual').length}</div></div>
+    <div class="metric"><div class="metric-label">Chênh lệch tổng A vs B</div><div class="metric-val" style="font-size:16px;color:${Math.abs(diff)<1?'#1D9E75':diff>0?'#E24B4A':'#BA7517'}">${Math.abs(diff)<1?'Khớp':fmtNum(diff)}</div></div>`;
+  document.getElementById('cnt-input').textContent=cleanA.length+'/'+cleanB.length;
+  document.getElementById('cnt-manual').textContent=unmatchedA.length+unmatchedB.length;
+  document.getElementById('cnt-result').textContent=pairs.length;
+  let logEl=document.getElementById('cnt-log'); if(logEl)logEl.textContent=matchLogs.length;
+  renderTabInput();
+  renderTabManual();
+  renderTabResult();
+  renderTabLog();
+}
+
+// ───── TAB 1: INPUT ─────
+function renderTabInput(){
+  let totalA=cleanA.reduce((s,r)=>s+r.tax,0);
+  let totalB=cleanB.reduce((s,r)=>s+r.tax,0);
+  let warnA='', warnB='';
+  if(detectedTotalA!==null){
+    let d=Math.abs(detectedTotalA-totalA);
+    warnA=d<1
+      ?`<div class="ok-box">✓ Tổng (<b>${fmtNum(totalA)}</b>) khớp với tổng trong file gốc (<b>${fmtNum(detectedTotalA)}</b>)</div>`
+      :`<div class="warn-box">⚠ Tổng đưa vào (<b>${fmtNum(totalA)}</b>) lệch với tổng gốc (<b>${fmtNum(detectedTotalA)}</b>) — chênh ${fmtNum(detectedTotalA-totalA)}</div>`;
+  }
+  if(detectedTotalB!==null){
+    let d=Math.abs(detectedTotalB-totalB);
+    warnB=d<1
+      ?`<div class="ok-box">✓ Tổng (<b>${fmtNum(totalB)}</b>) khớp với tổng trong file gốc (<b>${fmtNum(detectedTotalB)}</b>)</div>`
+      :`<div class="warn-box">⚠ Tổng đưa vào (<b>${fmtNum(totalB)}</b>) lệch với tổng gốc (<b>${fmtNum(detectedTotalB)}</b>) — chênh ${fmtNum(detectedTotalB-totalB)}</div>`;
+  }
+
+  function buildForm(side){
+    let p='add-'+side+'-';
+    return `<div class="add-form">
+      <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:6px">Thêm dòng vào File ${side.toUpperCase()}</div>
+      <div class="add-form-row" style="grid-template-columns:1fr 1fr 1fr 1fr 2fr 1fr">
+        <input type="text" id="${p}inv" placeholder="Số HĐ">
+        <input type="text" id="${p}date-ht" placeholder="Ngày HT">
+        <input type="text" id="${p}date-ct" placeholder="Ngày CT">
+        <input type="text" id="${p}num" placeholder="Số CT">
+        <input type="text" id="${p}desc" placeholder="Diễn giải/Tên đối tượng">
+        <input type="text" id="${p}tax" placeholder="PS Nợ">
+      </div>
+      <div class="add-form-actions">
+        <button class="btn btn-primary btn-sm" onclick="addManualRow('${side}')">+ Thêm vào File ${side.toUpperCase()}</button>
+      </div>
+    </div>`;
+  }
+
+  function buildTbl(rows,side){
+    let h=`<table class="data-tbl">
+      <colgroup>
+        <col style="width:70px"><col style="width:75px"><col style="width:75px"><col style="width:80px"><col style="width:80px"><col style="width:95px"><col style="width:36px">
+      </colgroup>
+      <thead><tr>
+      <th>Số HĐ<span class="col-resizer"></span></th>
+      <th>Ngày HT<span class="col-resizer"></span></th>
+      <th>Ngày CT<span class="col-resizer"></span></th>
+      <th>Số CT<span class="col-resizer"></span></th>
+      <th>Diễn giải/Tên đối tượng<span class="col-resizer"></span></th>
+      <th class="num">PS Nợ<span class="col-resizer"></span></th>
+      <th></th>
+      </tr></thead><tbody>`;
+    rows.forEach(r=>{
+      let cls=r.isManual?'manual-added':'';
+      h+=`<tr class="${cls}"><td>${esc(r.invRaw)||'—'}</td><td>${esc(r.date_ht)||'—'}</td><td>${esc(r.date_ct)||'—'}</td><td>${esc(r.num_ct)||'—'}</td><td title="${esc(r.desc)}">${esc(r.desc)||'—'}</td><td class="num">${fmtNum(r.tax)}</td><td><button class="btn btn-icon" onclick="deleteInputRow('${side}','${r.id}')" title="Xóa">✕</button></td></tr>`;
+    });
+    let tot=rows.reduce((s,r)=>s+r.tax,0);
+    h+=`<tr class="grand-total"><td colspan="5">TỔNG CỘNG (${rows.length} dòng)</td><td class="num">${fmtNum(tot)}</td><td></td></tr></tbody></table>`;
+    return h;
+  }
+
+  document.getElementById('tab-input').innerHTML=`
+    <div class="info-box">So sánh <strong>TỔNG CỘNG</strong> bên dưới với tổng trong file Excel gốc để xác nhận app đã đọc đúng dữ liệu.<br><b>Chênh lệch tổng input A - B:</b> <span class="${Math.abs(totalA-totalB)<1?'diff-ok':(totalA-totalB)>0?'diff-plus':'diff-minus'}">${Math.abs(totalA-totalB)<1?'TRUE':fmtNum(totalA-totalB)}</span></div>
+    <div class="input-summary">
+      <div class="input-card">
+        <div class="input-card-head"><div class="input-card-title">File A</div><div class="input-card-stat">Dòng: <b>${cleanA.length}</b> · Tổng: <b>${fmtNum(totalA)}</b></div></div>
+        ${warnA}${buildForm('a')}
+        <div class="tbl-wrap" style="max-height:500px">${buildTbl(cleanA,'a')}</div>
+      </div>
+      <div class="input-card">
+        <div class="input-card-head"><div class="input-card-title">File B</div><div class="input-card-stat">Dòng: <b>${cleanB.length}</b> · Tổng: <b>${fmtNum(totalB)}</b></div></div>
+        ${warnB}${buildForm('b')}
+        <div class="tbl-wrap" style="max-height:500px">${buildTbl(cleanB,'b')}</div>
+      </div>
+    </div>`;
+  enableColResize();
+}
+
+// ───── TAB 2: MANUAL ─────
+function getManualGroupValue(r, mode){
+  if(mode==='vendor')return r.vendor||'(không tên)';
+  if(mode==='num_ct')return r.num_ct||'(không số chứng từ)';
+  if(mode==='account')return r.account||'(không TK đối ứng)';
+  if(mode==='invoice')return r.invRaw||'(không số hóa đơn)';
+  return 'Tất cả chưa ghép';
+}
+function sortManualRows(rows){
+  rows.sort((a,b)=>{
+    if(manualSortMode==='amount_asc')return Math.abs(a.tax)-Math.abs(b.tax);
+    if(manualSortMode==='date')return String(a.date_ct||a.date_ht).localeCompare(String(b.date_ct||b.date_ht));
+    if(manualSortMode==='num_ct')return String(a.num_ct).localeCompare(String(b.num_ct)) || Math.abs(b.tax)-Math.abs(a.tax);
+    return Math.abs(b.tax)-Math.abs(a.tax) || String(a.account).localeCompare(String(b.account));
+  });
+  return rows;
+}
+function rowPassManualFilter(r){
+  let q=norm(manualTextFilter);
+  if(!q)return true;
+  return norm([r.vendor,r.desc,r.invRaw,r.num_ct,r.account,r.tax,r.date_ht,r.date_ct].join(' ')).includes(q);
+}
+function setManualGroupMode(side,v){
+  if(side==='a')manualGroupModeA=v; else manualGroupModeB=v;
+  renderTabManualKeepScroll();
+}
+function setManualSortMode(v){manualSortMode=v; renderTabManualKeepScroll();}
+function setManualFilter(v){
+  manualTextFilter=v;
+  clearTimeout(manualFilterTimer);
+  manualFilterTimer=setTimeout(()=>{
+    let input=document.getElementById('manual-filter-input');
+    let caret=input ? input.selectionStart : null;
+    renderTabManualKeepScroll(()=>{
+      let ni=document.getElementById('manual-filter-input');
+      if(ni){ni.focus(); if(caret!=null){try{ni.setSelectionRange(caret,caret);}catch(e){}}}
+    });
+  },220);
+}
+function clearManualFilter(){manualTextFilter=''; renderTabManualKeepScroll(()=>{let i=document.getElementById('manual-filter-input'); if(i)i.focus();});}
+function renderTabManualKeepScroll(after){
+  let y=window.scrollY;
+  let wraps=[...document.querySelectorAll('#tab-manual .tbl-wrap')].map(w=>({left:w.scrollLeft,top:w.scrollTop}));
+  renderTabManual();
+  setTimeout(()=>{window.scrollTo(0,y); [...document.querySelectorAll('#tab-manual .tbl-wrap')].forEach((w,i)=>{w.scrollTop=wraps[i]?.top||0; w.scrollLeft=wraps[i]?.left||0;}); if(typeof after==='function')after();},0);
+}
+function renderTabManual(){
+  let sumA=()=>Array.from(selA).reduce((s,id)=>{let r=unmatchedA.find(x=>x.id===id);return s+(r?r.tax:0);},0);
+  let sumB=()=>Array.from(selB).reduce((s,id)=>{let r=unmatchedB.find(x=>x.id===id);return s+(r?r.tax:0);},0);
+  window._sumA=sumA;window._sumB=sumB;
+
+  let totalUmA=unmatchedA.reduce((s,r)=>s+r.tax,0);
+  let totalUmB=unmatchedB.reduce((s,r)=>s+r.tax,0);
+  let amountA=new Set(unmatchedA.filter(rowPassManualFilter).map(r=>roundMoney(r.tax)));
+  let amountB=new Set(unmatchedB.filter(rowPassManualFilter).map(r=>roundMoney(r.tax)));
+
+  function tbl(side){
+    let isA=side==='a';
+    let mode=isA?manualGroupModeA:manualGroupModeB;
+    let otherAmounts=isA?amountB:amountA;
+    let rowsAll=(isA?unmatchedA:unmatchedB).filter(rowPassManualFilter);
+    if(!rowsAll.length)return`<div class="empty-state" style="padding:1.5rem">✓ Không còn dòng chưa khớp theo bộ lọc hiện tại</div>`;
+    let groups={};
+    function getG(name){let k=(mode+'::'+norm(name||'(trống)'));if(!groups[k])groups[k]={name:name||'(trống)',key:k,rows:[]};return groups[k];}
+    rowsAll.forEach(r=>getG(getManualGroupValue(r,mode)).rows.push(r));
+    let groupKeys=Object.keys(groups).sort((x,y)=>{
+      let gx=groups[x], gy=groups[y];
+      let tx=Math.abs(gx.rows.reduce((s,r)=>s+r.tax,0));
+      let ty=Math.abs(gy.rows.reduce((s,r)=>s+r.tax,0));
+      if(manualSortMode==='amount_asc')return tx-ty || gx.name.localeCompare(gy.name);
+      if(manualSortMode==='amount_desc')return ty-tx || gx.name.localeCompare(gy.name);
+      return gx.name.localeCompare(gy.name);
+    });
+    let h=`<table class="data-tbl">
+      <colgroup>
+        <col style="width:36px"><col style="width:70px"><col style="width:75px"><col style="width:75px"><col style="width:80px"><col style="width:70px"><col style="width:110px"><col style="width:95px">
+      </colgroup>
+      <thead><tr>
+      <th></th>
+      <th>Số HĐ<span class="col-resizer"></span></th>
+      <th>Ngày HT<span class="col-resizer"></span></th>
+      <th>Ngày CT<span class="col-resizer"></span></th>
+      <th>Số CT<span class="col-resizer"></span></th>
+      <th>TK ĐƯ<span class="col-resizer"></span></th>
+      <th>Diễn giải/Tên đối tượng<span class="col-resizer"></span></th>
+      <th class="num">Phát sinh<span class="col-resizer"></span></th>
+      </tr></thead><tbody>`;
+    groupKeys.forEach(k=>{
+      let g=groups[k];
+      let rows=sortManualRows([...g.rows]);
+      if(!rows.length)return;
+      let gT=rows.reduce((s,r)=>s+r.tax,0);
+      let gIds=rows.map(r=>r.id);
+      let selSet=isA?selA:selB;
+      let allSel=gIds.every(id=>selSet.has(id))&&gIds.length>0;
+      let collapsed=collapsedGroups.has(k);
+      let hdrCls=collapsed?'group-hdr collapsed-hdr':'group-hdr';
+      let rawKey=k.replace(/'/g,"\\'");
+      h+=`<tr class="${hdrCls}">
+        <td class="check-cell" onclick="event.stopPropagation();toggleGroupSel('${side}','${esc(k)}')"><input type="checkbox" class="big-check" ${allSel?'checked':''} onclick="event.stopPropagation();toggleGroupSel('${side}','${esc(k)}')"></td>
+        <td colspan="7" onclick="toggleManualGroup('${rawKey}')" style="cursor:pointer">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g.name)}"><span class="collapse-icon">▼</span> ${esc(g.name)}</span>
+            <span style="font-weight:400;font-size:11px;color:#666;flex-shrink:0">${rows.length} dòng · <b style="color:#185FA5">${fmtNum(gT)}</b></span>
+          </div>
+        </td>
+      </tr>`;
+      if(!collapsed){
+        rows.forEach(r=>{
+          let cls=r.isManual?'manual-added':'';
+          if(selSet.has(r.id))cls+=' selected';
+          let amtCls=otherAmounts.has(roundMoney(r.tax))?' equal-amount':'';
+          h+=`<tr class="${cls}" data-id="${r.id}" onclick="toggleSel('${side}','${r.id}',this)" style="cursor:pointer" id="row-${r.id}">
+            <td class="check-cell"><input type="checkbox" class="big-check" id="ck-${r.id}" ${selSet.has(r.id)?'checked':''} onclick="event.stopPropagation();toggleSel('${side}','${r.id}',this.closest('tr'))"></td>
+            <td title="${esc(r.invRaw)}">${esc(r.invRaw)||'—'}</td>
+            <td title="${esc(r.date_ht)}">${esc(r.date_ht)||'—'}</td>
+            <td title="${esc(r.date_ct)}">${esc(r.date_ct)||'—'}</td>
+            <td title="${esc(r.num_ct)}">${esc(r.num_ct)||'—'}</td>
+            <td title="${esc(r.account)}">${esc(r.account)||'—'}</td>
+            <td title="${esc(r.desc)}">${esc(r.desc)||'—'}</td>
+            <td class="num${amtCls}" title="${otherAmounts.has(roundMoney(r.tax))?'Có số tiền bằng nhau ở file còn lại':''}">${fmtNum(r.tax)}</td></tr>`;
+        });
+      }
+    });
+    let tot=isA?totalUmA:totalUmB;
+    h+=`<tr class="grand-total"><td colspan="7">TỔNG ${side.toUpperCase()} CHƯA KHỚP</td><td class="num">${fmtNum(tot)}</td></tr>`;
+    return h+'</tbody></table>';
+  }
+
+  document.getElementById('tab-manual').innerHTML=`
+    <div class="info-box">Click để tick lẻ · Tick ô vuông ở header để chọn cả nhóm · Ô tiền nền vàng là có số phát sinh bằng đúng ở file còn lại · Có thể bôi đen/copy dữ liệu trong bảng để dán sang MISA.</div>
+    <div class="manual-toolbar">
+      <label>Nhóm A</label>
+      <select style="width:160px" onchange="setManualGroupMode('a',this.value)">
+        <option value="vendor" ${manualGroupModeA==='vendor'?'selected':''}>Đối tượng</option>
+        <option value="num_ct" ${manualGroupModeA==='num_ct'?'selected':''}>Số chứng từ</option>
+        <option value="account" ${manualGroupModeA==='account'?'selected':''}>TK đối ứng</option>
+        <option value="invoice" ${manualGroupModeA==='invoice'?'selected':''}>Số hóa đơn</option>
+        <option value="none" ${manualGroupModeA==='none'?'selected':''}>Không nhóm</option>
+      </select>
+      <label>Nhóm B</label>
+      <select style="width:160px" onchange="setManualGroupMode('b',this.value)">
+        <option value="vendor" ${manualGroupModeB==='vendor'?'selected':''}>Đối tượng</option>
+        <option value="num_ct" ${manualGroupModeB==='num_ct'?'selected':''}>Số chứng từ</option>
+        <option value="account" ${manualGroupModeB==='account'?'selected':''}>TK đối ứng</option>
+        <option value="invoice" ${manualGroupModeB==='invoice'?'selected':''}>Số hóa đơn</option>
+        <option value="none" ${manualGroupModeB==='none'?'selected':''}>Không nhóm</option>
+      </select>
+      <label>Sắp xếp</label>
+      <select style="width:170px" onchange="setManualSortMode(this.value)">
+        <option value="amount_desc" ${manualSortMode==='amount_desc'?'selected':''}>Số tiền giảm dần</option>
+        <option value="amount_asc" ${manualSortMode==='amount_asc'?'selected':''}>Số tiền tăng dần</option>
+        <option value="date" ${manualSortMode==='date'?'selected':''}>Ngày chứng từ</option>
+        <option value="num_ct" ${manualSortMode==='num_ct'?'selected':''}>Số chứng từ</option>
+      </select>
+      <label>Lọc nhanh</label>
+      <input id="manual-filter-input" class="filter-input" type="text" value="${esc(manualTextFilter)}" oninput="setManualFilter(this.value)" onkeydown="event.stopPropagation()" placeholder="Tìm đối tượng, số CT, HĐ, TK, tiền...">
+      <button class="btn btn-sm" onclick="clearManualFilter()">Xóa lọc</button>
+      <button class="btn btn-sm" onclick="expandAllManual()">Mở rộng tất cả</button>
+      <button class="btn btn-sm" onclick="collapseAllManual()">Thu gọn tất cả</button>
+    </div>
+    <div class="sum-bar" id="manual-sum">Đã chọn: A = <b>0</b> &nbsp;|&nbsp; B = <b>0</b> &nbsp;|&nbsp; Chênh: <b>0</b></div>
+    <div id="suggestion-box"></div>
+    <div style="margin-bottom:.75rem;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="manualPair()">Ghép cặp đã chọn</button>
+      <button class="btn btn-sm" onclick="clearSel()">Bỏ chọn tất cả</button>
+    </div>
+    <div class="manual-grid">
+      <div><div class="sec-label" style="margin-bottom:.5rem">File A — chưa khớp (${unmatchedA.length})</div><div class="tbl-wrap">${tbl('a')}</div></div>
+      <div><div class="sec-label" style="margin-bottom:.5rem">File B — chưa khớp (${unmatchedB.length})</div><div class="tbl-wrap">${tbl('b')}</div></div>
+    </div>`;
+  updateManualSum();
+  renderSuggestions();
+  enableColResize();
+}
+
+function buildSuggestionRows(max=20){
+  let suggestions=[];
+  let selectedA=unmatchedA.filter(r=>selA.has(r.id));
+  let selectedB=unmatchedB.filter(r=>selB.has(r.id));
+  function addSug(aItems,bItems,reason){
+    if(!aItems.length||!bItems.length)return;
+    if(!rowsEqual(aItems,bItems))return;
+    let key=rowIds(aItems)+'::'+rowIds(bItems);
+    if(suggestions.some(x=>x.key===key))return;
+    suggestions.push({key,aIds:aItems.map(r=>r.id),bIds:bItems.map(r=>r.id),aItems,bItems,reason,sum:rowSum(aItems),vendor:aItems[0]?.vendor||bItems[0]?.vendor||''});
+  }
+  if(selectedA.length && !selectedB.length){
+    let target=roundMoney(rowSum(selectedA));
+    let vendors=new Set(selectedA.map(r=>norm(r.vendor)));
+    let candidates=unmatchedB.filter(r=>vendors.has(norm(r.vendor)) || vendors.size!==1);
+    let subs=enumerateSubsets(candidates.slice(0,16),16).filter(x=>sumsEqual(x.sum,target)).slice(0,5);
+    subs.forEach(x=>addSug(selectedA,x.items,'Gợi ý theo số tiền đã chọn ở File A'));
+  }else if(selectedB.length && !selectedA.length){
+    let target=roundMoney(rowSum(selectedB));
+    let vendors=new Set(selectedB.map(r=>norm(r.vendor)));
+    let candidates=unmatchedA.filter(r=>vendors.has(norm(r.vendor)) || vendors.size!==1);
+    let subs=enumerateSubsets(candidates.slice(0,16),16).filter(x=>sumsEqual(x.sum,target)).slice(0,5);
+    subs.forEach(x=>addSug(x.items,selectedB,'Gợi ý theo số tiền đã chọn ở File B'));
+  }else if(!selectedA.length && !selectedB.length){
+    // Không tự quét toàn bộ mỗi lần render để tránh giật với dữ liệu lớn.
+    return [];
+  }
+  return suggestions.slice(0,max);
+}
+function renderSuggestions(){
+  suggestionCache=buildSuggestionRows(12);
+  let box=document.getElementById('suggestion-box');
+  if(!box)return;
+  if(!suggestionCache.length){
+    box.innerHTML='<div class="info-box" style="padding:.55rem .75rem;margin-bottom:.75rem">Gợi ý ghép: tick một vài dòng ở một bên để tìm tổ hợp bằng tiền ở bên còn lại. Không tự quét toàn bộ để tránh chậm với dữ liệu lớn.</div>';
+    return;
+  }
+  let rows=suggestionCache.map((x,i)=>`<tr><td>${i+1}</td><td title="${esc(x.vendor)}">${esc(x.vendor)||'—'}</td><td class="num">${fmtNum(x.sum)}</td><td>A: ${x.aItems.length} dòng · B: ${x.bItems.length} dòng</td><td>${esc(x.reason)}</td><td><button class="btn btn-primary btn-sm" onclick="acceptSuggestion(${i})">Chấp nhận</button></td></tr>`).join('');
+  box.innerHTML=`<div class="info-box" style="margin-bottom:.75rem"><b>Gợi ý ghép chính xác</b> — chỉ gợi ý khi tổng A = tổng B đúng tuyệt đối, không ướm lệch.</div><div class="tbl-wrap" style="margin-bottom:.75rem"><table class="data-tbl"><colgroup><col style="width:40px"><col style="width:260px"><col style="width:120px"><col style="width:150px"><col style="width:260px"><col style="width:90px"></colgroup><thead><tr><th>#</th><th>Đối tượng</th><th class="num">Số tiền</th><th>Số dòng</th><th>Lý do</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  enableColResize();
+}
+function acceptSuggestion(i){
+  let s=suggestionCache[i];
+  if(!s)return;
+  snapshot('Chấp nhận gợi ý ghép');
+  let aItems=unmatchedA.filter(r=>s.aIds.includes(r.id));
+  let bItems=unmatchedB.filter(r=>s.bIds.includes(r.id));
+  makePair(aItems,bItems,'manual','Chấp nhận gợi ý ghép chính xác');
+  unmatchedA=unmatchedA.filter(r=>!s.aIds.includes(r.id));
+  unmatchedB=unmatchedB.filter(r=>!s.bIds.includes(r.id));
+  selA.clear();selB.clear();
+  renderResult();
+}
+function toggleManualGroup(key){
+  let selection=(window.getSelection&&window.getSelection().toString())||'';
+  if(selection.trim().length>0)return;
+  if(collapsedGroups.has(key))collapsedGroups.delete(key);
+  else collapsedGroups.add(key);
+  renderTabManualKeepScroll();
+}
+function manualCollapseKey(side,r){
+  let mode=side==='a'?manualGroupModeA:manualGroupModeB;
+  return mode+'::'+norm(getManualGroupValue(r,mode)||'(trống)');
+}
+function expandAllManual(){
+  unmatchedA.forEach(r=>collapsedGroups.delete(manualCollapseKey('a',r)));
+  unmatchedB.forEach(r=>collapsedGroups.delete(manualCollapseKey('b',r)));
+  renderTabManualKeepScroll();
+}
+function collapseAllManual(){
+  unmatchedA.forEach(r=>collapsedGroups.add(manualCollapseKey('a',r)));
+  unmatchedB.forEach(r=>collapsedGroups.add(manualCollapseKey('b',r)));
+  renderTabManualKeepScroll();
+}
+
+function updateManualSum(){
+  let sa=window._sumA?window._sumA():0,sb=window._sumB?window._sumB():0;
+  let diff=sa-sb,na=selA.size,nb=selB.size;
+  let dc=Math.abs(diff)<1?'color:#1D9E75':diff>0?'color:#E24B4A':'color:#BA7517';
+  let el=document.getElementById('manual-sum');
+  if(el)el.innerHTML=`Đã chọn: A = <b>${na}</b> dòng (${fmtNum(sa)}) &nbsp;|&nbsp; B = <b>${nb}</b> dòng (${fmtNum(sb)}) &nbsp;|&nbsp; Chênh: <span style="${dc}"><b>${fmtNum(diff)}</b></span>`;
+}
+
+function toggleSel(side,id,tr){
+  // Nếu người dùng đang bôi đen/copy dữ liệu thì không tick, không render lại bảng.
+  let selection=(window.getSelection&&window.getSelection().toString())||'';
+  if(selection.trim().length>0)return;
+  let set=side==='a'?selA:selB;
+  if(set.has(id))set.delete(id);
+  else set.add(id);
+  renderTabManualKeepScroll();
+}
+
+function toggleGroupSel(side,groupKey){
+  let set=side==='a'?selA:selB;
+  let mode=side==='a'?manualGroupModeA:manualGroupModeB;
+  let rows=(side==='a'?unmatchedA:unmatchedB).filter(rowPassManualFilter).filter(r=>(mode+'::'+norm(getManualGroupValue(r,mode)||'(trống)'))===groupKey);
+  let ids=rows.map(r=>r.id);
+  let allSel=ids.every(id=>set.has(id));
+  if(allSel)ids.forEach(id=>set.delete(id));
+  else ids.forEach(id=>set.add(id));
+  renderTabManualKeepScroll();
+}
+
+function clearSel(){selA.clear();selB.clear();renderTabManualKeepScroll();}
+
+function manualPair(){
+  if(!selA.size||!selB.size){alert('Vui lòng chọn ít nhất 1 dòng ở mỗi bên.');return;}
+  snapshot('Ghép cặp tay');
+  let aItems=unmatchedA.filter(r=>selA.has(r.id));
+  let bItems=unmatchedB.filter(r=>selB.has(r.id));
+  let sumA=aItems.reduce((s,r)=>s+r.tax,0);
+  let sumB=bItems.reduce((s,r)=>s+r.tax,0);
+  makePair(aItems,bItems,'manual','Ghép tay; cho phép lệch tiền và hiển thị đúng chênh lệch');
+  unmatchedA=unmatchedA.filter(r=>!selA.has(r.id));
+  unmatchedB=unmatchedB.filter(r=>!selB.has(r.id));
+  selA.clear();selB.clear();
+  renderResult();
+}
+
+function unpair(idx){
+  if(!confirm('Hủy ghép cặp này?'))return;
+  snapshot('Hủy ghép');
+  let p=pairs[idx];
+  p.aItems.forEach(r=>unmatchedA.push(r));
+  p.bItems.forEach(r=>unmatchedB.push(r));
+  pairs.splice(idx,1);
+  sortByVendor(unmatchedA,'vendor');
+  sortByVendor(unmatchedB,'vendor');
+  renderResult();
+}
+
+// ───── TAB 3: RESULT ─────
+function renderTabResult(){
+  let groups={};
+  function getGroup(name){
+    let key=norm(name)||'(không có tên)';
+    if(!groups[key])groups[key]={name:name||'(không có tên)',key,pairs:[],unmA:[],unmB:[]};
+    return groups[key];
+  }
+  pairs.forEach((p,i)=>{
+    let name=p.aItems[0]?.vendor||p.bItems[0]?.vendor||'';
+    getGroup(name).pairs.push({pair:p,idx:i});
+  });
+  unmatchedA.forEach(r=>getGroup(r.vendor).unmA.push(r));
+  unmatchedB.forEach(r=>getGroup(r.vendor).unmB.push(r));
+
+  let groupsMatched=[], groupsUnmatched=[];
+  Object.keys(groups).forEach(k=>{
+    let g=groups[k];
+    if(g.unmA.length===0&&g.unmB.length===0&&g.pairs.length>0)groupsMatched.push(g);
+    else groupsUnmatched.push(g);
+  });
+  // Sort theo tổng tăng dần (max của A và B)
+  function groupTotal(g){
+    let sA=g.pairs.reduce((s,{pair})=>s+pair.aItems.reduce((s2,r)=>s2+r.tax,0),0)+g.unmA.reduce((s,r)=>s+r.tax,0);
+    let sB=g.pairs.reduce((s,{pair})=>s+pair.bItems.reduce((s2,r)=>s2+r.tax,0),0)+g.unmB.reduce((s,r)=>s+r.tax,0);
+    return Math.max(Math.abs(sA),Math.abs(sB));
+  }
+  groupsMatched.sort((x,y)=>groupTotal(x)-groupTotal(y));
+  groupsUnmatched.sort((x,y)=>groupTotal(x)-groupTotal(y));
+
+  let html=`<table class="data-tbl">
+    <colgroup>
+      <col style="width:70px"><col style="width:75px"><col style="width:75px"><col style="width:80px"><col style="width:80px"><col style="width:95px"><col style="width:95px"><col style="width:95px"><col style="width:80px"><col style="width:36px">
+    </colgroup>
+    <thead><tr>
+    <th>Số HĐ<span class="col-resizer"></span></th>
+    <th>Ngày HT (A)<span class="col-resizer"></span></th>
+    <th>Ngày HT (B)<span class="col-resizer"></span></th>
+    <th>Số CT<span class="col-resizer"></span></th>
+    <th>Diễn giải/Tên đối tượng<span class="col-resizer"></span></th>
+    <th class="num">PS Nợ A<span class="col-resizer"></span></th>
+    <th class="num">PS Nợ B<span class="col-resizer"></span></th>
+    <th>Loại<span class="col-resizer"></span></th>
+    <th class="num">Chênh<span class="col-resizer"></span></th>
+    <th></th>
+    </tr></thead><tbody>`;
+
+  let totalMatchedA=0,totalMatchedB=0,totalUnmA=0,totalUnmB=0;
+
+  if(groupsMatched.length){
+    let secCol=collapsedSections.matched?'collapsed-hdr':'';
+    html+=`<tr class="section-hdr ${secCol}" onclick="toggleSection('matched')"><td colspan="10"><span class="collapse-icon">▼</span> ĐÃ GHÉP HOÀN TOÀN (${groupsMatched.length} đối tượng)</td></tr>`;
+    if(!collapsedSections.matched){
+      groupsMatched.forEach(g=>{
+        let r=renderGroupResult(g);
+        html+=r.html;
+        totalMatchedA+=r.tMatchedA;totalMatchedB+=r.tMatchedB;
+      });
+    }else{
+      groupsMatched.forEach(g=>{
+        g.pairs.forEach(({pair})=>{
+          totalMatchedA+=pair.aItems.reduce((s,r)=>s+r.tax,0);
+          totalMatchedB+=pair.bItems.reduce((s,r)=>s+r.tax,0);
+        });
+      });
+    }
+  }
+
+  if(groupsUnmatched.length){
+    let secCol=collapsedSections.unmatched?'collapsed-hdr':'';
+    html+=`<tr class="section-hdr ${secCol}" onclick="toggleSection('unmatched')"><td colspan="10"><span class="collapse-icon">▼</span> CÒN CHƯA GHÉP / GHÉP MỘT PHẦN (${groupsUnmatched.length} đối tượng)</td></tr>`;
+    if(!collapsedSections.unmatched){
+      groupsUnmatched.forEach(g=>{
+        let r=renderGroupResult(g);
+        html+=r.html;
+        totalMatchedA+=r.tMatchedA;totalMatchedB+=r.tMatchedB;
+        totalUnmA+=r.tUnmA;totalUnmB+=r.tUnmB;
+      });
+    }else{
+      groupsUnmatched.forEach(g=>{
+        g.pairs.forEach(({pair})=>{
+          totalMatchedA+=pair.aItems.reduce((s,r)=>s+r.tax,0);
+          totalMatchedB+=pair.bItems.reduce((s,r)=>s+r.tax,0);
+        });
+        totalUnmA+=g.unmA.reduce((s,r)=>s+r.tax,0);
+        totalUnmB+=g.unmB.reduce((s,r)=>s+r.tax,0);
+      });
+    }
+  }
+
+  html+=`<tr class="section-hdr"><td colspan="10">━ TỔNG KẾT ━</td></tr>`;
+  html+=`<tr class="grand-total"><td colspan="5">Tổng đã ghép</td><td class="num">${fmtNum(totalMatchedA)}</td><td class="num">${fmtNum(totalMatchedB)}</td><td></td><td class="num">${diffCell(totalMatchedA-totalMatchedB)}</td><td></td></tr>`;
+  html+=`<tr class="grand-total"><td colspan="5">Tổng chưa ghép</td><td class="num">${fmtNum(totalUnmA)}</td><td class="num">${fmtNum(totalUnmB)}</td><td>Chênh chưa ghép</td><td class="num">${diffCell(totalUnmA-totalUnmB)}</td><td></td></tr>`;
+  html+=`<tr class="grand-total" style="background:#fff4d0"><td colspan="5">TỔNG CUỐI (= tổng input)</td><td class="num">${fmtNum(totalMatchedA+totalUnmA)}</td><td class="num">${fmtNum(totalMatchedB+totalUnmB)}</td><td>Chênh tổng input</td><td class="num">${diffCell((totalMatchedA+totalUnmA)-(totalMatchedB+totalUnmB))}</td><td></td></tr>`;
+  html+='</tbody></table>';
+
+  document.getElementById('tab-result').innerHTML=`
+    <div class="info-box">Click vào header (đen/xanh) để thu gọn/mở rộng. <strong>TỔNG CUỐI</strong> phải bằng tổng ở bảng input.</div>
+    <div style="margin-bottom:.5rem;display:flex;gap:8px">
+      <button class="btn btn-sm" onclick="expandAll()">Mở rộng tất cả</button>
+      <button class="btn btn-sm" onclick="collapseAll()">Thu gọn tất cả</button>
+    </div>
+    <div class="tbl-wrap">${html}</div>`;
+  enableColResize();
+}
+
+function formatPairLevel(pair){
+  let label=lvLabel[pair.level]||pair.level;
+  if(pair.level==='invoice_cross_vendor')return '<span class="badge badge-amber" title="Rủi ro: cùng số hóa đơn nhưng khác đối tượng. Kiểm tra lại nếu nhiều NCC dùng số HĐ giống nhau.">⚠ '+esc(label)+'</span>';
+  if(pair.level==='subset_sum')return '<span class="badge badge-blue">'+esc(label)+'</span>';
+  if(pair.level==='manual')return '<span class="badge badge-gray">'+esc(label)+'</span>';
+  return '<span class="badge badge-green">'+esc(label)+'</span>';
+}
+
+function renderGroupResult(g){
+  let collapsed=collapsedGroups.has(g.key);
+  let hdrCls=collapsed?'group-hdr collapsed-hdr':'group-hdr';
+  // Tính tổng A, B của nhóm
+  let preTotA=g.pairs.reduce((s,{pair})=>s+pair.aItems.reduce((s2,r)=>s2+r.tax,0),0)+g.unmA.reduce((s,r)=>s+r.tax,0);
+  let preTotB=g.pairs.reduce((s,{pair})=>s+pair.bItems.reduce((s2,r)=>s2+r.tax,0),0)+g.unmB.reduce((s,r)=>s+r.tax,0);
+  let preDiff=preTotA-preTotB;
+  let diffStr=Math.abs(preDiff)<1?'<span style="color:#1D9E75;font-weight:600">khớp</span>':`<span style="color:${preDiff>0?'#E24B4A':'#BA7517'}">${preDiff>0?'+':''}${fmtNum(preDiff)}</span>`;
+  let html=`<tr class="${hdrCls}" onclick="toggleGroup('${g.key.replace(/'/g,"\\'")}')"><td colspan="10">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g.name)}"><span class="collapse-icon">▼</span> ${esc(g.name)}</span>
+      <span style="font-weight:400;font-size:11px;color:#666;flex-shrink:0">A: <b style="color:#1a1a1a">${fmtNum(preTotA)}</b> · B: <b style="color:#1a1a1a">${fmtNum(preTotB)}</b> · Chênh: ${diffStr}</span>
+    </div>
+  </td></tr>`;
+  let gTotA=0,gTotB=0,tMatchedA=0,tMatchedB=0,tUnmA=0,tUnmB=0;
+
+  g.pairs.forEach(({pair,idx})=>{
+    let n=Math.max(pair.aItems.length,pair.bItems.length);
+    let pTotA=pair.aItems.reduce((s,r)=>s+r.tax,0);
+    let pTotB=pair.bItems.reduce((s,r)=>s+r.tax,0);
+    gTotA+=pTotA;gTotB+=pTotB;
+    tMatchedA+=pTotA;tMatchedB+=pTotB;
+    if(collapsed)return;
+    // Số HĐ chung của cặp này
+    let invs=new Set();
+    pair.aItems.forEach(r=>{if(r.invRaw)invs.add(r.invRaw);});
+    pair.bItems.forEach(r=>{if(r.invRaw)invs.add(r.invRaw);});
+    let invDisplay=Array.from(invs).join(', ')||'—';
+
+    for(let i=0;i<n;i++){
+      let a=pair.aItems[i], b=pair.bItems[i];
+      html+='<tr>';
+      if(i===0)html+=`<td rowspan="${n}" title="${esc(invDisplay)}">${esc(invDisplay)}</td>`;
+      html+=`<td>${esc(a?.date_ht||'')}</td>`;
+      html+=`<td>${esc(b?.date_ht||'')}</td>`;
+      html+=`<td>${esc(a?.num_ct||b?.num_ct||'')}</td>`;
+      let descA=a?.desc||'', descB=b?.desc||'';
+      let descDisp=descA&&descB&&norm(descA)!==norm(descB)?('A: '+descA+' | B: '+descB):(descA||descB||'');
+      html+=`<td title="${esc(descDisp)}">${esc(descDisp)}</td>`;
+      html+=`<td class="num">${a?fmtNum(a.tax):''}</td>`;
+      html+=`<td class="num">${b?fmtNum(b.tax):''}</td>`;
+      if(i===0)html+=`<td rowspan="${n}">${formatPairLevel(pair)}</td>`;
+      if(i===0)html+=`<td rowspan="${n}" class="num">${diffCell(pTotA-pTotB)}</td>`;
+      if(i===0)html+=`<td rowspan="${n}"><button class="btn btn-icon" onclick="event.stopPropagation();unpair(${idx})" title="Hủy ghép">✕</button></td>`;
+      html+='</tr>';
+    }
+  });
+
+  if(!collapsed){
+    g.unmA.forEach(r=>{
+      gTotA+=r.tax;tUnmA+=r.tax;
+      html+=`<tr style="background:#fef5f5"><td>${esc(r.invRaw)}</td><td>${esc(r.date_ht)}</td><td></td><td>${esc(r.num_ct)}</td><td title="${esc(r.desc)}">${esc(r.desc)}</td><td class="num">${fmtNum(r.tax)}</td><td></td><td><span class="badge badge-red">Chưa ghép A</span></td><td></td><td></td></tr>`;
+    });
+    g.unmB.forEach(r=>{
+      gTotB+=r.tax;tUnmB+=r.tax;
+      html+=`<tr style="background:#fef5f5"><td>${esc(r.invRaw)}</td><td></td><td>${esc(r.date_ht)}</td><td>${esc(r.num_ct)}</td><td title="${esc(r.desc)}">${esc(r.desc)}</td><td></td><td class="num">${fmtNum(r.tax)}</td><td><span class="badge badge-red">Chưa ghép B</span></td><td></td><td></td></tr>`;
+    });
+  }else{
+    g.unmA.forEach(r=>{gTotA+=r.tax;tUnmA+=r.tax;});
+    g.unmB.forEach(r=>{gTotB+=r.tax;tUnmB+=r.tax;});
+  }
+
+  let gDiff=gTotA-gTotB;
+  html+=`<tr class="group-total"><td colspan="5">Tổng đối tượng</td><td class="num">${fmtNum(gTotA)}</td><td class="num">${fmtNum(gTotB)}</td><td></td><td class="num">${diffCell(gDiff)}</td><td></td></tr>`;
+  return {html, tMatchedA, tMatchedB, tUnmA, tUnmB};
+}
+
+function toggleGroup(key){
+  let selection=(window.getSelection&&window.getSelection().toString())||'';
+  if(selection.trim().length>0)return;
+  if(collapsedGroups.has(key))collapsedGroups.delete(key);
+  else collapsedGroups.add(key);
+  renderTabResult();
+}
+function toggleSection(sec){collapsedSections[sec]=!collapsedSections[sec];renderTabResult();}
+function expandAll(){collapsedGroups=new Set();collapsedSections={matched:false,unmatched:false};renderTabResult();}
+function collapseAll(){
+  let groups={};
+  pairs.forEach(p=>{let n=p.aItems[0]?.vendor||p.bItems[0]?.vendor||'';let k=norm(n)||'(không có tên)';groups[k]=1;});
+  unmatchedA.forEach(r=>{let k=norm(r.vendor)||'(không có tên)';groups[k]=1;});
+  unmatchedB.forEach(r=>{let k=norm(r.vendor)||'(không có tên)';groups[k]=1;});
+  collapsedGroups=new Set(Object.keys(groups));
+  renderTabResult();
+}
+
+function diffCell(d){
+  if(Math.abs(d)<1)return`<span class="diff-ok">TRUE</span>`;
+  return`<span class="${d>0?'diff-plus':'diff-minus'}">${d>0?'+':''}${fmtNum(d)}</span>`;
+}
+
+// ───── COL RESIZE ─────
+
+function renderTabLog(){
+  let el=document.getElementById('tab-log');
+  if(!el)return;
+  let rows=matchLogs.map((l,i)=>`<tr><td>${i+1}</td><td>${esc(l.time||'')}</td><td>${esc(l.type||'')}</td><td title="${esc(l.vendor||'')}">${esc(l.vendor||'')}</td><td>${esc(l.inv||'')}</td><td class="num">${l.sumA!==undefined?fmtNum(l.sumA):''}</td><td class="num">${l.sumB!==undefined?fmtNum(l.sumB):''}</td><td class="num">${l.diff!==undefined?fmtNum(l.diff):''}</td><td title="${esc(l.message||'')}">${esc(l.message||'')}</td></tr>`).join('');
+  el.innerHTML=`<div class="info-box"><b>LOG NGUYÊN NHÂN</b> ghi lại vì sao một nhóm được ghép hoặc còn treo lại. Các khoản lệch tiền luôn hiển thị chênh lệch đúng, không tự coi là khớp.</div><div style="margin-bottom:.75rem"><button class="btn btn-sm" onclick="clearLogs()">Xóa log</button></div><div class="tbl-wrap" style="max-height:600px"><table class="data-tbl"><colgroup><col style="width:45px"><col style="width:80px"><col style="width:130px"><col style="width:260px"><col style="width:100px"><col style="width:110px"><col style="width:110px"><col style="width:100px"><col style="width:420px"></colgroup><thead><tr><th>#</th><th>Giờ</th><th>Loại</th><th>Đối tượng</th><th>Số HĐ</th><th class="num">A</th><th class="num">B</th><th class="num">Chênh</th><th>Nội dung</th></tr></thead><tbody>${rows||'<tr><td colspan="9" class="empty-state">Chưa có log</td></tr>'}</tbody></table></div>`;
+  enableColResize();
+}
+function clearLogs(){ matchLogs=[]; let el=document.getElementById('cnt-log'); if(el)el.textContent='0'; renderTabLog(); }
+function buildReconcileSummaryRows(){
+  let map={};
+  function g(v){let k=norm(v)||'(không tên)'; if(!map[k])map[k]={vendor:v||'(không tên)',matchedA:0,matchedB:0,unA:0,unB:0}; return map[k];}
+  pairs.forEach(p=>{let v=p.aItems[0]?.vendor||p.bItems[0]?.vendor||''; let x=g(v); x.matchedA+=rowSum(p.aItems); x.matchedB+=rowSum(p.bItems);});
+  unmatchedA.forEach(r=>g(r.vendor).unA+=Math.round(r.tax||0));
+  unmatchedB.forEach(r=>g(r.vendor).unB+=Math.round(r.tax||0));
+  return Object.values(map).sort((a,b)=>norm(a.vendor).localeCompare(norm(b.vendor)));
+}
+function tableResizeKey(table){
+  let explicit=table.getAttribute('data-resize-key');
+  if(explicit)return explicit;
+  let labels=Array.from(table.querySelectorAll('thead th')).map(th=>{
+    let t=th.cloneNode(true);
+    t.querySelectorAll('.col-resizer').forEach(x=>x.remove());
+    return (t.textContent||'').replace(/\s+/g,' ').trim();
+  }).join('|');
+  return 'tbl:'+labels;
+}
+function saveColWidths(key, cols){
+  colWidthMemory[key]=Array.from(cols).map(c=>parseFloat((c.style.width||'').replace('px',''))||null);
+  let ks=Object.keys(colWidthMemory);
+  if(ks.length>50){ks.slice(0,ks.length-50).forEach(k=>delete colWidthMemory[k]);}
+  try{localStorage.setItem('doiChieuColWidths',JSON.stringify(colWidthMemory));}catch(e){}
+}
+function applySavedColWidths(table, key, cols){
+  let saved=colWidthMemory[key];
+  if(!saved||!saved.length)return;
+  saved.forEach((w,i)=>{
+    if(cols[i]&&w){cols[i].style.width=w+'px';}
+  });
+}
+function measureTextWidth(text, font){
+  let span=document.createElement('span');
+  span.style.position='fixed';
+  span.style.left='-9999px';
+  span.style.top='-9999px';
+  span.style.visibility='hidden';
+  span.style.whiteSpace='nowrap';
+  span.style.font=font||'13px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
+  span.textContent=text||'';
+  document.body.appendChild(span);
+  let w=span.getBoundingClientRect().width;
+  span.remove();
+  return w;
+}
+function getCellAtVisualIndex(row, idx){
+  let pos=0;
+  for(let cell of Array.from(row.children)){
+    let span=parseInt(cell.getAttribute('colspan')||'1')||1;
+    if(idx>=pos && idx<pos+span){
+      // Không lấy ô group/section colspan lớn để fit cột, vì nó làm cột đầu phình sai.
+      if(span>1)return null;
+      return cell;
+    }
+    pos+=span;
+  }
+  return null;
+}
+function bestCellText(cell){
+  if(!cell)return'';
+  let clone=cell.cloneNode(true);
+  clone.querySelectorAll('.col-resizer,.collapse-icon,input,button').forEach(x=>x.remove());
+  let parts=[];
+  let title=(cell.getAttribute('title')||'').replace(/\s+/g,' ').trim();
+  let text=(clone.textContent||'').replace(/\s+/g,' ').trim();
+  if(title)parts.push(title);
+  if(text)parts.push(text);
+  return parts.sort((a,b)=>b.length-a.length)[0]||'';
+}
+function autoFitColumn(table, idx){
+  let cols=table.querySelectorAll('colgroup col');
+  let col=cols[idx];
+  if(!col)return;
+  let maxW=0;
+  let th=table.querySelectorAll('thead th')[idx];
+  if(th){
+    let t=bestCellText(th);
+    maxW=Math.max(maxW, measureTextWidth(t, getComputedStyle(th).font)+42);
+  }
+  table.querySelectorAll('tbody tr').forEach(tr=>{
+    let cell=getCellAtVisualIndex(tr,idx);
+    if(!cell)return;
+    let text=bestCellText(cell);
+    let style=getComputedStyle(cell);
+    let w=measureTextWidth(text, style.font) + 34;
+    if(w>maxW)maxW=w;
+  });
+  // Với bảng đang thu gọn, dữ liệu chi tiết không nằm trong DOM; dùng title/text của header nhóm
+  // để ít nhất fit đủ tên đối tượng và tổng nhóm đang hiển thị.
+  if(maxW<40)maxW=80;
+  let newW=Math.max(24, Math.min(Math.ceil(maxW), 1600));
+  col.style.width=newW+'px';
+  if(th)th.style.width=newW+'px';
+  setTablePixelWidth(table);
+  saveColWidths(tableResizeKey(table), cols);
+}
+function setTablePixelWidth(table){
+  let cols=table.querySelectorAll('colgroup col');
+  let sum=0;
+  cols.forEach(col=>{
+    let w=parseFloat((col.style.width||'').replace('px',''));
+    if(!w){
+      // Fallback lấy width đang render nếu col chưa có inline width.
+      w=60;
+    }
+    sum+=w;
+  });
+  let wrap=table.closest('.tbl-wrap');
+  let minW=wrap ? Math.max(0, wrap.clientWidth-2) : 0;
+  // Quan trọng: width đặt bằng pixel để table-layout:fixed thực sự cho phép kéo hẹp,
+  // text trong ô sẽ ellipsis thay vì ép cột phình theo nội dung.
+  table.style.width=Math.max(sum,minW)+'px';
+}
+function enableColResize(){
+  document.querySelectorAll('table.data-tbl').forEach(table=>{
+    let cols=table.querySelectorAll('colgroup col');
+    let ths=table.querySelectorAll('thead th');
+    let key=tableResizeKey(table);
+    applySavedColWidths(table,key,cols);
+    setTablePixelWidth(table);
+    ths.forEach((th,idx)=>{
+      let resizer=th.querySelector('.col-resizer');
+      if(!resizer){
+        resizer=document.createElement('span');
+        resizer.className='col-resizer';
+        th.appendChild(resizer);
+      }
+      let col=cols[idx];
+      if(!resizer || !col)return;
+      let savedW=parseFloat((col.style.width||'').replace('px',''));
+      if(savedW)th.style.width=savedW+'px';
+
+      resizer.onclick=function(e){e.preventDefault();e.stopPropagation();};
+      resizer.ondblclick=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        autoFitColumn(table,idx);
+      };
+      th.ondblclick=function(e){
+        if(e.target===resizer)return;
+        let rect=th.getBoundingClientRect();
+        if(rect.right-e.clientX<=18){
+          e.preventDefault();
+          e.stopPropagation();
+          autoFitColumn(table,idx);
+        }
+      };
+      resizer.onmousedown=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        resizer.classList.add('dragging');
+        document.body.style.cursor='col-resize';
+        document.body.style.userSelect='none';
+        let startX=e.clientX;
+        let currentW=parseFloat((col.style.width||'').replace('px','')) || th.getBoundingClientRect().width || 80;
+
+        function onMove(me){
+          me.preventDefault();
+          let newW=Math.max(20, currentW + (me.clientX-startX));
+          col.style.width=newW+'px';
+          th.style.width=newW+'px';
+          setTablePixelWidth(table);
+        }
+        function onUp(me){
+          if(me){me.preventDefault();me.stopPropagation();}
+          saveColWidths(key, cols);
+          resizer.classList.remove('dragging');
+          document.body.style.cursor='';
+          document.body.style.userSelect='';
+          document.removeEventListener('mousemove',onMove,true);
+          document.removeEventListener('mouseup',onUp,true);
+          setTimeout(()=>{resizer.onclick=function(ev){ev.preventDefault();ev.stopPropagation();};},0);
+        }
+        document.addEventListener('mousemove',onMove,true);
+        document.addEventListener('mouseup',onUp,true);
+      };
+    });
+  });
+}
+
+function resetColWidths(){ colWidthMemory={}; try{localStorage.removeItem('doiChieuColWidths');}catch(e){} document.querySelectorAll('table.data-tbl colgroup col').forEach(c=>c.style.width=''); document.querySelectorAll('table.data-tbl th').forEach(th=>th.style.width=''); enableColResize(); alert('Đã reset độ rộng cột.'); }
+function scrollToTop(){window.scrollTo({top:0,behavior:'smooth'});}
+function scrollToBottom(){window.scrollTo({top:document.documentElement.scrollHeight,behavior:'smooth'});}
+
+function backToColumnConfig(){
+  document.getElementById('step-result').style.display='none';
+  document.getElementById('step-upload').style.display='block';
+  document.getElementById('col-map-area').style.display='block';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showTab(t){
+  const tabs=['input','manual','result','log'];
+  tabs.forEach(id=>{let el=document.getElementById('tab-'+id); if(el)el.style.display=id===t?'block':'none';});
+  document.querySelectorAll('.tab').forEach((el,i)=>{el.classList.toggle('active',tabs[i]===t);});
+}
+
+function aoaSheetWithCols(aoa, cols){
+  let ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=(cols||aoa[0]||[]).map(w=>typeof w==='number'?{wch:w}:{wch:14});
+  return ws;
+}
+function exportResult(){
+  let wb=XLSX.utils.book_new();
+  const input=[['BẢNG INPUT'],[],['FILE','Số HĐ','Ngày HT','Ngày CT','Số CT','TK đối ứng','Đối tượng/Diễn giải','Phát sinh']];
+  cleanA.forEach(r=>input.push(['A',r.invRaw,r.date_ht,r.date_ct,r.num_ct,r.account||'',r.desc,r.tax]));
+  input.push(['A','','','','','','TỔNG FILE A',cleanA.reduce((s,r)=>s+r.tax,0)]);
+  input.push([]);
+  cleanB.forEach(r=>input.push(['B',r.invRaw,r.date_ht,r.date_ct,r.num_ct,r.account||'',r.desc,r.tax]));
+  input.push(['B','','','','','','TỔNG FILE B',cleanB.reduce((s,r)=>s+r.tax,0)]);
+  XLSX.utils.book_append_sheet(wb,aoaSheetWithCols(input,[8,12,12,12,14,12,45,16]),'01_INPUT');
+
+  const manual=[['CHỜ GHÉP TAY'],[],['FILE','Số HĐ','Ngày HT','Ngày CT','Số CT','TK đối ứng','Đối tượng','Diễn giải','Phát sinh','Lý do chưa ghép']];
+  unmatchedA.forEach(r=>manual.push(['A',r.invRaw,r.date_ht,r.date_ct,r.num_ct,r.account||'',r.vendor,r.desc,r.tax,r.reason||'']));
+  unmatchedB.forEach(r=>manual.push(['B',r.invRaw,r.date_ht,r.date_ct,r.num_ct,r.account||'',r.vendor,r.desc,r.tax,r.reason||'']));
+  XLSX.utils.book_append_sheet(wb,aoaSheetWithCols(manual,[8,12,12,12,14,12,32,45,16,45]),'02_MANUAL');
+
+  const result=[['KẾT QUẢ ĐỐI CHIẾU'],[],['Nhóm','Số HĐ','Ngày HT A','Ngày HT B','Ngày CT A','Ngày CT B','Số CT A','Số CT B','TK ĐƯ A','TK ĐƯ B','Đối tượng','Diễn giải A','Diễn giải B','Phát sinh A','Phát sinh B','Loại ghép','Chênh lệch']];
+  pairs.forEach((p,idx)=>{
+    let n=Math.max(p.aItems.length,p.bItems.length);
+    let pTotA=p.aItems.reduce((s,r)=>s+r.tax,0), pTotB=p.bItems.reduce((s,r)=>s+r.tax,0);
+    let ven=p.aItems[0]?.vendor||p.bItems[0]?.vendor||'';
+    let invs=[...new Set([...p.aItems.map(r=>r.invRaw).filter(Boolean),...p.bItems.map(r=>r.invRaw).filter(Boolean)])].join(', ');
+    for(let i=0;i<n;i++){
+      let a=p.aItems[i],b=p.bItems[i];
+      result.push([i===0?('Cặp '+(idx+1)):'',i===0?invs:'',a?.date_ht||'',b?.date_ht||'',a?.date_ct||'',b?.date_ct||'',a?.num_ct||'',b?.num_ct||'',a?.account||'',b?.account||'',i===0?ven:'',a?.desc||'',b?.desc||'',a?a.tax:'',b?b.tax:'',i===0?(lvLabel[p.level]||p.level):'',i===0?Math.round(pTotA-pTotB):'']);
+    }
+    result.push(['Tổng cặp','','','','','','','','','',ven,'','',pTotA,pTotB,'',pTotA-pTotB]);
+  });
+  result.push([]);
+  result.push(['TỔNG ĐÃ GHÉP','','','','','','','','','','','','',pairs.reduce((s,p)=>s+rowSum(p.aItems),0),pairs.reduce((s,p)=>s+rowSum(p.bItems),0),'',pairs.reduce((s,p)=>s+rowSum(p.aItems)-rowSum(p.bItems),0)]);
+  result.push(['TỔNG CHƯA GHÉP','','','','','','','','','','','','',unmatchedA.reduce((s,r)=>s+r.tax,0),unmatchedB.reduce((s,r)=>s+r.tax,0),'',unmatchedA.reduce((s,r)=>s+r.tax,0)-unmatchedB.reduce((s,r)=>s+r.tax,0)]);
+  XLSX.utils.book_append_sheet(wb,aoaSheetWithCols(result,[12,14,12,12,12,12,14,14,12,12,32,45,45,16,16,18,16]),'03_KET_QUA');
+
+  let wsLog=[['LOG NGUYÊN NHÂN'],[],['Giờ','Loại','Đối tượng','Số HĐ','A','B','Chênh','Nội dung']];
+  matchLogs.forEach(l=>wsLog.push([l.time||'',l.type||'',l.vendor||'',l.inv||'',l.sumA??'',l.sumB??'',l.diff??'',l.message||'']));
+  XLSX.utils.book_append_sheet(wb,aoaSheetWithCols(wsLog,[12,18,32,18,16,16,16,60]),'04_LOG');
+  XLSX.writeFile(wb,'doi_chieu_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+function resetAll(){
+  if(!confirm('Tải file mới? Mọi dữ liệu hiện tại sẽ mất.'))return;
+  rawSheetA=[];rawSheetB=[];rawA=[];rawB=[];pairs=[];unmatchedA=[];unmatchedB=[];cleanA=[];cleanB=[];origA=[];origB=[];
+  selA=new Set();selB=new Set();undoStack=[];collapsedGroups=new Set();matchLogs=[];suggestionCache=[];
+  ['a','b'].forEach(w=>{
+    document.getElementById('zone-'+w).classList.remove('loaded');
+    document.getElementById('label-'+w).textContent='Nhấn để chọn file .xlsx';
+    document.querySelector('#zone-'+w+' .uz-icon').textContent='📊';
+    document.getElementById('file-'+w).value='';
+    document.getElementById('skip-'+w).value=0;
+    document.getElementById('preview-'+w).style.display='none';
+  });
+  document.getElementById('col-map-area').style.display='none';
+  document.getElementById('step-upload').style.display='block';
+  document.getElementById('step-result').style.display='none';
+}
+</script>
+
+<script>
+// ===== V4.4 override: hiển thị kết quả theo nhóm riêng của File A và File B =====
+let resultGroupModeA = localStorage.getItem('doiChieuResultGroupA') || 'num_ct';
+let resultGroupModeB = localStorage.getItem('doiChieuResultGroupB') || 'invoice';
+let resultSortMode = localStorage.getItem('doiChieuResultSort') || 'amount_desc';
+let resultCollapsedGroups = new Set();
+
+function resultModeLabel(mode){
+  return ({vendor:'Đối tượng',num_ct:'Số chứng từ',account:'TK đối ứng',invoice:'Số hóa đơn',date_ct:'Ngày chứng từ',none:'Không nhóm'})[mode]||mode;
+}
+function resultGroupValueRow(r, mode){
+  if(!r)return '—';
+  if(mode==='vendor')return r.vendor||'(không đối tượng)';
+  if(mode==='num_ct')return r.num_ct||'(không số CT)';
+  if(mode==='account')return r.account||'(không TK đối ứng)';
+  if(mode==='invoice')return r.invRaw||r.inv||'(không số hóa đơn)';
+  if(mode==='date_ct')return r.date_ct||r.date_ht||'(không ngày)';
+  if(mode==='none')return 'Tất cả';
+  return r.vendor||'(không nhóm)';
+}
+function resultGroupValueRows(rows, mode){
+  if(!rows||!rows.length)return '—';
+  let vals=[...new Set(rows.map(r=>resultGroupValueRow(r,mode)).filter(Boolean))];
+  if(vals.length===0)return '—';
+  if(vals.length<=3)return vals.join(', ');
+  return vals.slice(0,3).join(', ')+' ... +' + (vals.length-3);
+}
+function setResultGroupMode(side,v){
+  if(side==='a'){resultGroupModeA=v; localStorage.setItem('doiChieuResultGroupA',v);} else {resultGroupModeB=v; localStorage.setItem('doiChieuResultGroupB',v);}
+  resultCollapsedGroups=new Set();
+  renderTabResult();
+}
+function setResultSortMode(v){resultSortMode=v; localStorage.setItem('doiChieuResultSort',v); renderTabResult();}
+function resultGroupSortValue(g){return Math.max(Math.abs(g.sumA||0),Math.abs(g.sumB||0));}
+function sortResultGroups(arr){
+  return arr.sort((x,y)=>{
+    if(resultSortMode==='amount_asc')return resultGroupSortValue(x)-resultGroupSortValue(y);
+    if(resultSortMode==='label')return (x.labelA+' '+x.labelB).localeCompare(y.labelA+' '+y.labelB);
+    return resultGroupSortValue(y)-resultGroupSortValue(x);
+  });
+}
+function addResultGroup(map, labelA, labelB, entry){
+  let key=(labelA||'—')+'||'+(labelB||'—');
+  if(!map[key])map[key]={key,labelA:labelA||'—',labelB:labelB||'—',entries:[],sumA:0,sumB:0};
+  let g=map[key];
+  g.entries.push(entry);
+  if(entry.type==='pair'){
+    g.sumA += rowSum(entry.pair.aItems);
+    g.sumB += rowSum(entry.pair.bItems);
+  }else if(entry.type==='unA')g.sumA += Number(entry.row.tax)||0;
+  else if(entry.type==='unB')g.sumB += Number(entry.row.tax)||0;
+}
+function buildResultMaps(){
+  let matched={}, unmatched={};
+  pairs.forEach((p,idx)=>{
+    let la=resultGroupValueRows(p.aItems,resultGroupModeA);
+    let lb=resultGroupValueRows(p.bItems,resultGroupModeB);
+    addResultGroup(matched,la,lb,{type:'pair',pair:p,idx});
+  });
+  unmatchedA.forEach(r=>addResultGroup(unmatched,resultGroupValueRow(r,resultGroupModeA),'—',{type:'unA',row:r}));
+  unmatchedB.forEach(r=>addResultGroup(unmatched,'—',resultGroupValueRow(r,resultGroupModeB),{type:'unB',row:r}));
+  return {matched:sortResultGroups(Object.values(matched)), unmatched:sortResultGroups(Object.values(unmatched))};
+}
+function renderResultGroupRows(g, section){
+  let collapsed=resultCollapsedGroups.has(section+'::'+g.key);
+  let diff=(g.sumA||0)-(g.sumB||0);
+  let html=`<tr class="group-hdr ${collapsed?'collapsed-hdr':''}" onclick="toggleResultGroup('${section}','${esc(g.key)}')"><td colspan="14"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span><span class="collapse-icon">▼</span> A: ${esc(g.labelA)} &nbsp; ⇄ &nbsp; B: ${esc(g.labelB)}</span><span style="font-weight:400;font-size:11px;color:#666;flex-shrink:0">A: <b>${fmtNum(g.sumA||0)}</b> · B: <b>${fmtNum(g.sumB||0)}</b> · Chênh: ${diffCell(diff)}</span></div></td></tr>`;
+  if(collapsed)return html;
+  for(let ent of g.entries){
+    if(ent.type==='pair'){
+      let p=ent.pair, idx=ent.idx;
+      let n=Math.max(p.aItems.length,p.bItems.length);
+      let pTotA=rowSum(p.aItems), pTotB=rowSum(p.bItems);
+      for(let i=0;i<n;i++){
+        let a=p.aItems[i], b=p.bItems[i];
+        html+='<tr>';
+        html+=`<td title="${esc(resultGroupValueRow(a,resultGroupModeA))}">${esc(resultGroupValueRow(a,resultGroupModeA))}</td>`;
+        html+=`<td title="${esc(resultGroupValueRow(b,resultGroupModeB))}">${esc(resultGroupValueRow(b,resultGroupModeB))}</td>`;
+        html+=`<td title="${esc(a?.invRaw||'')}">${esc(a?.invRaw||'')}</td>`;
+        html+=`<td title="${esc(b?.invRaw||'')}">${esc(b?.invRaw||'')}</td>`;
+        html+=`<td title="${esc(a?.num_ct||'')}">${esc(a?.num_ct||'')}</td>`;
+        html+=`<td title="${esc(b?.num_ct||'')}">${esc(b?.num_ct||'')}</td>`;
+        html+=`<td title="${esc(a?.account||'')}">${esc(a?.account||'')}</td>`;
+        html+=`<td title="${esc(b?.account||'')}">${esc(b?.account||'')}</td>`;
+        html+=`<td title="${esc(a?.desc||'')}">${esc(a?.desc||'')}</td>`;
+        html+=`<td title="${esc(b?.desc||'')}">${esc(b?.desc||'')}</td>`;
+        html+=`<td class="num">${a?fmtNum(a.tax):''}</td>`;
+        html+=`<td class="num">${b?fmtNum(b.tax):''}</td>`;
+        if(i===0)html+=`<td rowspan="${n}">${formatPairLevel(p)}</td><td rowspan="${n}" class="num">${diffCell(pTotA-pTotB)}<br><button class="btn btn-icon" onclick="event.stopPropagation();unpair(${idx})" title="Hủy ghép">✕</button></td>`;
+        html+='</tr>';
+      }
+    }else if(ent.type==='unA'){
+      let r=ent.row;
+      html+=`<tr style="background:#fef5f5"><td title="${esc(resultGroupValueRow(r,resultGroupModeA))}">${esc(resultGroupValueRow(r,resultGroupModeA))}</td><td></td><td>${esc(r.invRaw)}</td><td></td><td>${esc(r.num_ct)}</td><td></td><td>${esc(r.account||'')}</td><td></td><td title="${esc(r.desc)}">${esc(r.desc)}</td><td></td><td class="num">${fmtNum(r.tax)}</td><td></td><td><span class="badge badge-red">Chưa ghép A</span></td><td title="${esc(r.reason||'')}">${esc(r.reason||'')}</td></tr>`;
+    }else if(ent.type==='unB'){
+      let r=ent.row;
+      html+=`<tr style="background:#fef5f5"><td></td><td title="${esc(resultGroupValueRow(r,resultGroupModeB))}">${esc(resultGroupValueRow(r,resultGroupModeB))}</td><td></td><td>${esc(r.invRaw)}</td><td></td><td>${esc(r.num_ct)}</td><td></td><td>${esc(r.account||'')}</td><td></td><td title="${esc(r.desc)}">${esc(r.desc)}</td><td></td><td class="num">${fmtNum(r.tax)}</td><td><span class="badge badge-red">Chưa ghép B</span></td><td title="${esc(r.reason||'')}">${esc(r.reason||'')}</td></tr>`;
+    }
+  }
+  html+=`<tr class="group-total"><td colspan="10">Tổng nhóm</td><td class="num">${fmtNum(g.sumA||0)}</td><td class="num">${fmtNum(g.sumB||0)}</td><td></td><td class="num">${diffCell(diff)}</td></tr>`;
+  return html;
+}
+function renderTabResult(){
+  let maps=buildResultMaps();
+  let totalMatchedA=pairs.reduce((s,p)=>s+rowSum(p.aItems),0), totalMatchedB=pairs.reduce((s,p)=>s+rowSum(p.bItems),0);
+  let totalUnmA=unmatchedA.reduce((s,r)=>s+(Number(r.tax)||0),0), totalUnmB=unmatchedB.reduce((s,r)=>s+(Number(r.tax)||0),0);
+  let html=`<table class="data-tbl" data-resize-key="result-v44"><colgroup>
+    <col style="width:130px"><col style="width:130px"><col style="width:85px"><col style="width:85px"><col style="width:95px"><col style="width:95px"><col style="width:70px"><col style="width:70px"><col style="width:180px"><col style="width:180px"><col style="width:105px"><col style="width:105px"><col style="width:120px"><col style="width:120px">
+    </colgroup><thead><tr>
+    <th>Nhóm A (${esc(resultModeLabel(resultGroupModeA))})<span class="col-resizer"></span></th>
+    <th>Nhóm B (${esc(resultModeLabel(resultGroupModeB))})<span class="col-resizer"></span></th>
+    <th>HĐ A<span class="col-resizer"></span></th><th>HĐ B<span class="col-resizer"></span></th>
+    <th>Số CT A<span class="col-resizer"></span></th><th>Số CT B<span class="col-resizer"></span></th>
+    <th>TK A<span class="col-resizer"></span></th><th>TK B<span class="col-resizer"></span></th>
+    <th>Diễn giải A<span class="col-resizer"></span></th><th>Diễn giải B<span class="col-resizer"></span></th>
+    <th class="num">PS A<span class="col-resizer"></span></th><th class="num">PS B<span class="col-resizer"></span></th>
+    <th>Loại<span class="col-resizer"></span></th><th class="num">Chênh / Lý do<span class="col-resizer"></span></th>
+    </tr></thead><tbody>`;
+  let secCol=collapsedSections.matched?'collapsed-hdr':'';
+  html+=`<tr class="section-hdr ${secCol}" onclick="toggleSection('matched')"><td colspan="14"><span class="collapse-icon">▼</span> ĐÃ GHÉP (${maps.matched.length} nhóm hiển thị)</td></tr>`;
+  if(!collapsedSections.matched) maps.matched.forEach(g=>{html+=renderResultGroupRows(g,'matched');});
+  secCol=collapsedSections.unmatched?'collapsed-hdr':'';
+  html+=`<tr class="section-hdr ${secCol}" onclick="toggleSection('unmatched')"><td colspan="14"><span class="collapse-icon">▼</span> CÒN CHƯA GHÉP (${maps.unmatched.length} nhóm hiển thị)</td></tr>`;
+  if(!collapsedSections.unmatched) maps.unmatched.forEach(g=>{html+=renderResultGroupRows(g,'unmatched');});
+  html+=`<tr class="section-hdr"><td colspan="14">━ TỔNG KẾT ━</td></tr>`;
+  html+=`<tr class="grand-total"><td colspan="10">Tổng đã ghép</td><td class="num">${fmtNum(totalMatchedA)}</td><td class="num">${fmtNum(totalMatchedB)}</td><td></td><td class="num">${diffCell(totalMatchedA-totalMatchedB)}</td></tr>`;
+  html+=`<tr class="grand-total"><td colspan="10">Tổng chưa ghép</td><td class="num">${fmtNum(totalUnmA)}</td><td class="num">${fmtNum(totalUnmB)}</td><td>Chênh chưa ghép</td><td class="num">${diffCell(totalUnmA-totalUnmB)}</td></tr>`;
+  html+=`<tr class="grand-total" style="background:#fff4d0"><td colspan="10">TỔNG CUỐI (= tổng input)</td><td class="num">${fmtNum(totalMatchedA+totalUnmA)}</td><td class="num">${fmtNum(totalMatchedB+totalUnmB)}</td><td>Chênh tổng input</td><td class="num">${diffCell((totalMatchedA+totalUnmA)-(totalMatchedB+totalUnmB))}</td></tr>`;
+  html+='</tbody></table>';
+  document.getElementById('tab-result').innerHTML=`
+    <div class="info-box"><b>Chế độ công nợ:</b> có thể nhóm riêng File A và File B. Ví dụ A theo <b>Số chứng từ</b>, B theo <b>Số hóa đơn</b>. Không bắt buộc dùng tên đối tượng làm nhóm chung.</div>
+    <div class="manual-toolbar" style="margin-bottom:.75rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label>File A nhóm theo</label>
+      <select style="width:165px" onchange="setResultGroupMode('a',this.value)">
+        <option value="num_ct" ${resultGroupModeA==='num_ct'?'selected':''}>Số chứng từ</option><option value="invoice" ${resultGroupModeA==='invoice'?'selected':''}>Số hóa đơn</option><option value="account" ${resultGroupModeA==='account'?'selected':''}>TK đối ứng</option><option value="vendor" ${resultGroupModeA==='vendor'?'selected':''}>Đối tượng</option><option value="date_ct" ${resultGroupModeA==='date_ct'?'selected':''}>Ngày chứng từ</option><option value="none" ${resultGroupModeA==='none'?'selected':''}>Không nhóm</option>
+      </select>
+      <label>File B nhóm theo</label>
+      <select style="width:165px" onchange="setResultGroupMode('b',this.value)">
+        <option value="invoice" ${resultGroupModeB==='invoice'?'selected':''}>Số hóa đơn</option><option value="num_ct" ${resultGroupModeB==='num_ct'?'selected':''}>Số chứng từ</option><option value="account" ${resultGroupModeB==='account'?'selected':''}>TK đối ứng</option><option value="vendor" ${resultGroupModeB==='vendor'?'selected':''}>Đối tượng</option><option value="date_ct" ${resultGroupModeB==='date_ct'?'selected':''}>Ngày chứng từ</option><option value="none" ${resultGroupModeB==='none'?'selected':''}>Không nhóm</option>
+      </select>
+      <label>Sắp xếp</label><select style="width:155px" onchange="setResultSortMode(this.value)"><option value="amount_desc" ${resultSortMode==='amount_desc'?'selected':''}>Số tiền giảm dần</option><option value="amount_asc" ${resultSortMode==='amount_asc'?'selected':''}>Số tiền tăng dần</option><option value="label" ${resultSortMode==='label'?'selected':''}>Theo tên nhóm</option></select>
+      <button class="btn btn-sm" onclick="expandAllResultGroups()">Mở rộng tất cả</button><button class="btn btn-sm" onclick="collapseAllResultGroups()">Thu gọn tất cả</button>
+    </div>
+    <div class="tbl-wrap">${html}</div>`;
+  enableColResize();
+}
+function toggleResultGroup(section,key){let k=section+'::'+key;if(resultCollapsedGroups.has(k))resultCollapsedGroups.delete(k);else resultCollapsedGroups.add(k);renderTabResult();}
+function expandAllResultGroups(){resultCollapsedGroups=new Set();collapsedSections={matched:false,unmatched:false};renderTabResult();}
+function collapseAllResultGroups(){let maps=buildResultMaps();resultCollapsedGroups=new Set();maps.matched.forEach(g=>resultCollapsedGroups.add('matched::'+g.key));maps.unmatched.forEach(g=>resultCollapsedGroups.add('unmatched::'+g.key));renderTabResult();}
+</script>
+
+
+<script>
+// ===== V4.9 override: confidence, risk filter, review flag, result export columns =====
+let resultConfidenceFilter='all';
+let resultReviewFilter='all';
+
+function setResultConfidenceFilter(v){resultConfidenceFilter=v;renderTabResult();}
+function setResultReviewFilter(v){resultReviewFilter=v;renderTabResult();}
+function togglePairReviewed(idx, checked){
+  // V4.9.1: chỉ cập nhật trạng thái, không render lại bảng để không nhảy về đầu bảng.
+  if(pairs[idx]) pairs[idx].reviewed=!!checked;
+  try{ updateResultDashboardOnly(); }catch(e){}
+}
+function pairPassResultFilter(p){
+  let c=pairConfidence(p);
+  if(resultConfidenceFilter!=='all' && c!==resultConfidenceFilter)return false;
+  if(resultReviewFilter==='unreviewed' && p.reviewed)return false;
+  if(resultReviewFilter==='reviewed' && !p.reviewed)return false;
+  if(resultReviewFilter==='warning' && c==='high')return false;
+  return true;
+}
+function resultConfidenceSummary(){
+  let out={high:0,mid:0,low:0,reviewed:0,unreviewed:0};
+  pairs.forEach(p=>{let c=pairConfidence(p);out[c]=(out[c]||0)+1;if(p.reviewed)out.reviewed++;else out.unreviewed++;});
+  return out;
+}
+function renderConfidenceDashboard(){
+  let s=resultConfidenceSummary();
+  function card(c,label,emoji){return `<div class="conf-card ${resultConfidenceFilter===c?'active':''}" onclick="setResultConfidenceFilter('${c}')"><b>${emoji} ${s[c]||0}</b><small>${label}</small></div>`;}
+  return `<div class="result-dashboard">
+    <div class="conf-card ${resultConfidenceFilter==='all'?'active':''}" onclick="setResultConfidenceFilter('all')"><b>${pairs.length}</b><small>Tất cả cặp ghép</small></div>
+    ${card('high','Tin cậy cao','🟢')}${card('mid','Tin cậy trung bình','🟡')}${card('low','Tin cậy thấp / cần soi','🟠')}
+  </div>`;
+}
+
+function buildResultMaps(){
+  let matched={}, unmatched={};
+  pairs.forEach((p,idx)=>{
+    if(!pairPassResultFilter(p))return;
+    let la=resultGroupValueRows(p.aItems,resultGroupModeA);
+    let lb=resultGroupValueRows(p.bItems,resultGroupModeB);
+    addResultGroup(matched,la,lb,{type:'pair',pair:p,idx});
+  });
+  // Khi đang lọc cặp ghép theo rủi ro, vẫn giữ phần chưa ghép để kiểm tra cuối bảng nếu chọn Tất cả;
+  // nếu lọc confidence cụ thể thì chỉ hiện cặp ghép theo filter để người dùng soi rủi ro nhanh.
+  if(resultConfidenceFilter==='all' && resultReviewFilter==='all'){
+    unmatchedA.forEach(r=>addResultGroup(unmatched,resultGroupValueRow(r,resultGroupModeA),'—',{type:'unA',row:r}));
+    unmatchedB.forEach(r=>addResultGroup(unmatched,'—',resultGroupValueRow(r,resultGroupModeB),{type:'unB',row:r}));
+  }
+  return {matched:sortResultGroups(Object.values(matched)), unmatched:sortResultGroups(Object.values(unmatched))};
+}
+
+function renderResultGroupRows(g, section){
+  let collapsed=resultCollapsedGroups.has(section+'::'+g.key);
+  let diff=(g.sumA||0)-(g.sumB||0);
+  let html=`<tr class="group-hdr ${collapsed?'collapsed-hdr':''}" onclick="toggleResultGroup('${section}','${esc(g.key)}')"><td colspan="18"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span><span class="collapse-icon">▼</span> A: ${esc(g.labelA)} &nbsp; ⇄ &nbsp; B: ${esc(g.labelB)}</span><span style="font-weight:400;font-size:11px;color:#666;flex-shrink:0">A: <b>${fmtNum(g.sumA||0)}</b> · B: <b>${fmtNum(g.sumB||0)}</b> · Chênh: ${diffCell(diff)}</span></div></td></tr>`;
+  if(collapsed)return html;
+  for(let ent of g.entries){
+    if(ent.type==='pair'){
+      let p=ent.pair, idx=ent.idx, conf=pairConfidence(p), rowCls='result-row-'+conf;
+      let n=Math.max(p.aItems.length,p.bItems.length);
+      let pTotA=rowSum(p.aItems), pTotB=rowSum(p.bItems);
+      for(let i=0;i<n;i++){
+        let a=p.aItems[i], b=p.bItems[i];
+        html+=`<tr class="${rowCls}">`;
+        html+=`<td title="${esc(resultGroupValueRow(a,resultGroupModeA))}">${esc(resultGroupValueRow(a,resultGroupModeA))}</td>`;
+        html+=`<td title="${esc(resultGroupValueRow(b,resultGroupModeB))}">${esc(resultGroupValueRow(b,resultGroupModeB))}</td>`;
+        html+=`<td title="${esc(a?.invRaw||'')}">${esc(a?.invRaw||'')}</td>`;
+        html+=`<td title="${esc(b?.invRaw||'')}">${esc(b?.invRaw||'')}</td>`;
+        html+=`<td title="${esc(a?.num_ct||'')}">${esc(a?.num_ct||'')}</td>`;
+        html+=`<td title="${esc(b?.num_ct||'')}">${esc(b?.num_ct||'')}</td>`;
+        html+=`<td title="${esc(a?.account||'')}">${esc(a?.account||'')}</td>`;
+        html+=`<td title="${esc(b?.account||'')}">${esc(b?.account||'')}</td>`;
+        html+=`<td title="${esc(a?.desc||'')}">${esc(a?.desc||'')}</td>`;
+        html+=`<td title="${esc(b?.desc||'')}">${esc(b?.desc||'')}</td>`;
+        html+=`<td class="num">${a?fmtNum(a.tax):''}</td>`;
+        html+=`<td class="num">${b?fmtNum(b.tax):''}</td>`;
+        if(i===0){
+          html+=`<td rowspan="${n}">${lvLabel[p.level]||p.level}</td>`;
+          html+=`<td rowspan="${n}" title="${esc(p.reason||'')}">${esc(p.reason||'')}</td>`;
+          html+=`<td rowspan="${n}">${confidenceBadge(conf)}</td>`;
+          html+=`<td rowspan="${n}" title="${esc(pairRiskText(p))}">${esc(pairRiskText(p))}</td>`;
+          html+=`<td rowspan="${n}" style="text-align:center"><input class="review-check" type="checkbox" ${p.reviewed?'checked':''} onclick="event.stopPropagation();togglePairReviewed(${idx},this.checked)" title="Đánh dấu đã kiểm tra"></td>`;
+          html+=`<td rowspan="${n}" class="num">${diffCell(pTotA-pTotB)}<br><button class="btn btn-icon" onclick="event.stopPropagation();unpair(${idx})" title="Hủy ghép">✕</button></td>`;
+        }
+        html+='</tr>';
+      }
+    }else if(ent.type==='unA'){
+      let r=ent.row;
+      html+=`<tr style="background:#fef5f5"><td title="${esc(resultGroupValueRow(r,resultGroupModeA))}">${esc(resultGroupValueRow(r,resultGroupModeA))}</td><td></td><td>${esc(r.invRaw)}</td><td></td><td>${esc(r.num_ct)}</td><td></td><td>${esc(r.account||'')}</td><td></td><td title="${esc(r.desc)}">${esc(r.desc)}</td><td></td><td class="num">${fmtNum(r.tax)}</td><td></td><td><span class="badge badge-red">Chưa ghép A</span></td><td title="${esc(r.reason||'')}">${esc(r.reason||'')}</td><td></td><td></td><td></td><td></td></tr>`;
+    }else if(ent.type==='unB'){
+      let r=ent.row;
+      html+=`<tr style="background:#fef5f5"><td></td><td title="${esc(resultGroupValueRow(r,resultGroupModeB))}">${esc(resultGroupValueRow(r,resultGroupModeB))}</td><td></td><td>${esc(r.invRaw)}</td><td></td><td>${esc(r.num_ct)}</td><td></td><td>${esc(r.account||'')}</td><td></td><td title="${esc(r.desc)}">${esc(r.desc)}</td><td></td><td class="num">${fmtNum(r.tax)}</td><td><span class="badge badge-red">Chưa ghép B</span></td><td title="${esc(r.reason||'')}">${esc(r.reason||'')}</td><td></td><td></td><td></td><td></td></tr>`;
+    }
+  }
+  html+=`<tr class="group-total"><td colspan="10">Tổng nhóm</td><td class="num">${fmtNum(g.sumA||0)}</td><td class="num">${fmtNum(g.sumB||0)}</td><td colspan="5"></td><td class="num">${diffCell(diff)}</td></tr>`;
+  return html;
+}
+
+function renderTabResult(){
+  let maps=buildResultMaps();
+  let totalMatchedA=pairs.reduce((s,p)=>s+rowSum(p.aItems),0), totalMatchedB=pairs.reduce((s,p)=>s+rowSum(p.bItems),0);
+  let totalUnmA=unmatchedA.reduce((s,r)=>s+(Number(r.tax)||0),0), totalUnmB=unmatchedB.reduce((s,r)=>s+(Number(r.tax)||0),0);
+  let html=`<table class="data-tbl" data-resize-key="result-v49"><colgroup>
+    <col style="width:130px"><col style="width:130px"><col style="width:85px"><col style="width:85px"><col style="width:95px"><col style="width:95px"><col style="width:70px"><col style="width:70px"><col style="width:180px"><col style="width:180px"><col style="width:105px"><col style="width:105px"><col style="width:130px"><col style="width:240px"><col style="width:115px"><col style="width:220px"><col style="width:80px"><col style="width:120px">
+    </colgroup><thead><tr>
+    <th>Nhóm A (${esc(resultModeLabel(resultGroupModeA))})<span class="col-resizer"></span></th>
+    <th>Nhóm B (${esc(resultModeLabel(resultGroupModeB))})<span class="col-resizer"></span></th>
+    <th>HĐ A<span class="col-resizer"></span></th><th>HĐ B<span class="col-resizer"></span></th>
+    <th>Số CT A<span class="col-resizer"></span></th><th>Số CT B<span class="col-resizer"></span></th>
+    <th>TK A<span class="col-resizer"></span></th><th>TK B<span class="col-resizer"></span></th>
+    <th>Diễn giải A<span class="col-resizer"></span></th><th>Diễn giải B<span class="col-resizer"></span></th>
+    <th class="num">PS A<span class="col-resizer"></span></th><th class="num">PS B<span class="col-resizer"></span></th>
+    <th>Mức ghép<span class="col-resizer"></span></th><th>Lý do ghép<span class="col-resizer"></span></th><th>Mức tin cậy<span class="col-resizer"></span></th><th>Rủi ro<span class="col-resizer"></span></th><th>Đã KT</th><th class="num">Chênh<span class="col-resizer"></span></th>
+    </tr></thead><tbody>`;
+  let secCol=collapsedSections.matched?'collapsed-hdr':'';
+  html+=`<tr class="section-hdr ${secCol}" onclick="toggleSection('matched')"><td colspan="18"><span class="collapse-icon">▼</span> ĐÃ GHÉP (${maps.matched.length} nhóm hiển thị)</td></tr>`;
+  if(!collapsedSections.matched) maps.matched.forEach(g=>{html+=renderResultGroupRows(g,'matched');});
+  secCol=collapsedSections.unmatched?'collapsed-hdr':'';
+  html+=`<tr class="section-hdr ${secCol}" onclick="toggleSection('unmatched')"><td colspan="18"><span class="collapse-icon">▼</span> CÒN CHƯA GHÉP (${maps.unmatched.length} nhóm hiển thị)</td></tr>`;
+  if(!collapsedSections.unmatched) maps.unmatched.forEach(g=>{html+=renderResultGroupRows(g,'unmatched');});
+  html+=`<tr class="section-hdr"><td colspan="18">━ TỔNG KẾT ━</td></tr>`;
+  html+=`<tr class="grand-total"><td colspan="10">Tổng đã ghép</td><td class="num">${fmtNum(totalMatchedA)}</td><td class="num">${fmtNum(totalMatchedB)}</td><td colspan="5"></td><td class="num">${diffCell(totalMatchedA-totalMatchedB)}</td></tr>`;
+  html+=`<tr class="grand-total"><td colspan="10">Tổng chưa ghép</td><td class="num">${fmtNum(totalUnmA)}</td><td class="num">${fmtNum(totalUnmB)}</td><td colspan="5">Chênh chưa ghép</td><td class="num">${diffCell(totalUnmA-totalUnmB)}</td></tr>`;
+  html+=`<tr class="grand-total" style="background:#fff4d0"><td colspan="10">TỔNG CUỐI (= tổng input)</td><td class="num">${fmtNum(totalMatchedA+totalUnmA)}</td><td class="num">${fmtNum(totalMatchedB+totalUnmB)}</td><td colspan="5">Chênh tổng input</td><td class="num">${diffCell((totalMatchedA+totalUnmA)-(totalMatchedB+totalUnmB))}</td></tr>`;
+  html+='</tbody></table>';
+  document.getElementById('tab-result').innerHTML=`
+    <div class="info-box"><b>V4.9:</b> Bảng kết quả có mức tin cậy, rủi ro và bộ lọc để soi nhanh các cặp cần kiểm tra. “Ghép theo tổng nhiều khoản” là trường hợp hệ thống cộng nhiều khoản nhỏ để khớp một khoản lớn.</div>
+    ${renderConfidenceDashboard()}
+    <div class="result-filter-bar">
+      <label>File A nhóm theo</label>
+      <select style="width:165px" onchange="setResultGroupMode('a',this.value)">
+        <option value="num_ct" ${resultGroupModeA==='num_ct'?'selected':''}>Số chứng từ</option><option value="invoice" ${resultGroupModeA==='invoice'?'selected':''}>Số hóa đơn</option><option value="account" ${resultGroupModeA==='account'?'selected':''}>TK đối ứng</option><option value="vendor" ${resultGroupModeA==='vendor'?'selected':''}>Đối tượng</option><option value="date_ct" ${resultGroupModeA==='date_ct'?'selected':''}>Ngày chứng từ</option><option value="none" ${resultGroupModeA==='none'?'selected':''}>Không nhóm</option>
+      </select>
+      <label>File B nhóm theo</label>
+      <select style="width:165px" onchange="setResultGroupMode('b',this.value)">
+        <option value="invoice" ${resultGroupModeB==='invoice'?'selected':''}>Số hóa đơn</option><option value="num_ct" ${resultGroupModeB==='num_ct'?'selected':''}>Số chứng từ</option><option value="account" ${resultGroupModeB==='account'?'selected':''}>TK đối ứng</option><option value="vendor" ${resultGroupModeB==='vendor'?'selected':''}>Đối tượng</option><option value="date_ct" ${resultGroupModeB==='date_ct'?'selected':''}>Ngày chứng từ</option><option value="none" ${resultGroupModeB==='none'?'selected':''}>Không nhóm</option>
+      </select>
+      <label>Tin cậy</label><select style="width:150px" onchange="setResultConfidenceFilter(this.value)"><option value="all" ${resultConfidenceFilter==='all'?'selected':''}>Tất cả</option><option value="high" ${resultConfidenceFilter==='high'?'selected':''}>Cao</option><option value="mid" ${resultConfidenceFilter==='mid'?'selected':''}>Trung bình</option><option value="low" ${resultConfidenceFilter==='low'?'selected':''}>Thấp</option></select>
+      <label>Kiểm tra</label><select style="width:170px" onchange="setResultReviewFilter(this.value)"><option value="all" ${resultReviewFilter==='all'?'selected':''}>Tất cả</option><option value="warning" ${resultReviewFilter==='warning'?'selected':''}>Chỉ mục cần kiểm tra</option><option value="unreviewed" ${resultReviewFilter==='unreviewed'?'selected':''}>Chưa kiểm tra</option><option value="reviewed" ${resultReviewFilter==='reviewed'?'selected':''}>Đã kiểm tra</option></select>
+      <label>Sắp xếp</label><select style="width:155px" onchange="setResultSortMode(this.value)"><option value="amount_desc" ${resultSortMode==='amount_desc'?'selected':''}>Số tiền giảm dần</option><option value="amount_asc" ${resultSortMode==='amount_asc'?'selected':''}>Số tiền tăng dần</option><option value="label" ${resultSortMode==='label'?'selected':''}>Theo tên nhóm</option></select>
+      <button class="btn btn-sm" onclick="expandAllResultGroups()">Mở rộng tất cả</button><button class="btn btn-sm" onclick="collapseAllResultGroups()">Thu gọn tất cả</button>
+    </div>
+    <div class="tbl-wrap">${html}</div>`;
+  enableColResize();
+}
+
+function exportResult(){
+  let wb=XLSX.utils.book_new();
+  const input=[['BẢNG INPUT'],[],['FILE','Số HĐ','Ngày HT','Ngày CT','Số CT','TK đối ứng','Đối tượng/Diễn giải','Phát sinh']];
+  cleanA.forEach(r=>input.push(['A',r.invRaw,r.date_ht,r.date_ct,r.num_ct,r.account||'',r.desc,r.tax]));
+  input.push(['A','','','','','','TỔNG FILE A',cleanA.reduce((s,r)=>s+r.tax,0)]); input.push([]);
+  cleanB.forEach(r=>input.push(['B',r.invRaw,r.date_ht,r.date_ct,r.num_ct,r.account||'',r.desc,r.tax]));
+  input.push(['B','','','','','','TỔNG FILE B',cleanB.reduce((s,r)=>s+r.tax,0)]);
+  XLSX.utils.book_append_sheet(wb,aoaSheetWithCols(input,[8,12,12,12,14,12,45,16]),'01_INPUT');
+
+  const manual=[['CHỜ GHÉP TAY'],[],['FILE','Số HĐ','Ngày HT','Ngày CT','Số CT','TK đối ứng','Đối tượng','Diễn giải','Phát sinh','Lý do chưa ghép']];
+  unmatchedA.forEach(r=>manual.push(['A',r.invRaw,r.date_ht,r.date_ct,r.num_ct,r.account||'',r.vendor,r.desc,r.tax,r.reason||'']));
+  unmatchedB.forEach(r=>manual.push(['B',r.invRaw,r.date_ht,r.date_ct,r.num_ct,r.account||'',r.vendor,r.desc,r.tax,r.reason||'']));
+  XLSX.utils.book_append_sheet(wb,aoaSheetWithCols(manual,[8,12,12,12,14,12,32,45,16,45]),'02_MANUAL');
+
+  const result=[['KẾT QUẢ ĐỐI CHIẾU V4.9'],[],['Nhóm','Số HĐ','Ngày HT A','Ngày HT B','Ngày CT A','Ngày CT B','Số CT A','Số CT B','TK ĐƯ A','TK ĐƯ B','Đối tượng','Diễn giải A','Diễn giải B','Phát sinh A','Phát sinh B','Mức ghép','Lý do ghép','Mức tin cậy','Rủi ro','Cảnh báo kiểm tra','Đã kiểm tra','Chênh lệch']];
+  pairs.forEach((p,idx)=>{
+    let n=Math.max(p.aItems.length,p.bItems.length);
+    let pTotA=rowSum(p.aItems), pTotB=rowSum(p.bItems), conf=pairConfidence(p);
+    let ven=p.aItems[0]?.vendor||p.bItems[0]?.vendor||'';
+    let invs=[...new Set([...p.aItems.map(r=>r.invRaw).filter(Boolean),...p.bItems.map(r=>r.invRaw).filter(Boolean)])].join(', ');
+    for(let i=0;i<n;i++){
+      let a=p.aItems[i],b=p.bItems[i];
+      result.push([i===0?('Cặp '+(idx+1)):'',i===0?invs:'',a?.date_ht||'',b?.date_ht||'',a?.date_ct||'',b?.date_ct||'',a?.num_ct||'',b?.num_ct||'',a?.account||'',b?.account||'',i===0?ven:'',a?.desc||'',b?.desc||'',a?a.tax:'',b?b.tax:'',i===0?(lvLabel[p.level]||p.level):'',i===0?(p.reason||''):'',i===0?confLabel[conf]:'',i===0?pairRiskText(p):'',i===0?pairWarningText(p):'',i===0?(p.reviewed?'Đã kiểm tra':'Chưa kiểm tra'):'',i===0?Math.round(pTotA-pTotB):'']);
+    }
+    result.push(['Tổng cặp','','','','','','','','','',ven,'','',pTotA,pTotB,'','','','','','',pTotA-pTotB]);
+  });
+  result.push([]);
+  result.push(['TỔNG ĐÃ GHÉP','','','','','','','','','','','','',pairs.reduce((s,p)=>s+rowSum(p.aItems),0),pairs.reduce((s,p)=>s+rowSum(p.bItems),0),'','','','','','',pairs.reduce((s,p)=>s+rowSum(p.aItems)-rowSum(p.bItems),0)]);
+  result.push(['TỔNG CHƯA GHÉP','','','','','','','','','','','','',unmatchedA.reduce((s,r)=>s+r.tax,0),unmatchedB.reduce((s,r)=>s+r.tax,0),'','','','','','',unmatchedA.reduce((s,r)=>s+r.tax,0)-unmatchedB.reduce((s,r)=>s+r.tax,0)]);
+  XLSX.utils.book_append_sheet(wb,aoaSheetWithCols(result,[12,14,12,12,12,12,14,14,12,12,32,45,45,16,16,22,48,16,42,18,16,16]),'03_KET_QUA');
+
+  let wsLog=[['LOG NGUYÊN NHÂN'],[],['Giờ','Loại','Đối tượng','Số HĐ','A','B','Chênh','Nội dung']];
+  matchLogs.forEach(l=>wsLog.push([l.time||'',lvLabel[l.type]||l.type||'',l.vendor||'',l.inv||'',l.sumA??'',l.sumB??'',l.diff??'',String(l.message||'').replace(/Subset Sum/g,'Ghép theo tổng nhiều khoản')]));
+  XLSX.utils.book_append_sheet(wb,aoaSheetWithCols(wsLog,[12,24,32,18,16,16,16,70]),'04_LOG');
+  XLSX.writeFile(wb,'doi_chieu_v4_9_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+</script>
+
+
+<style>
+/* ===== V4.9.1 navigation/freeze improvements ===== */
+.floating-hscroll{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2000;background:#fff;border:1px solid #cfcfc7;border-radius:12px;box-shadow:0 6px 22px rgba(0,0,0,.18);padding:8px 10px;display:flex;align-items:center;gap:8px;min-width:360px;max-width:min(760px,70vw)}
+.floating-hscroll button{border:1px solid #d0d0c8;background:#fafaf8;border-radius:8px;padding:6px 10px;cursor:pointer;font-weight:800;color:#0F6E56}.floating-hscroll button:hover{background:#e1f5ee}
+.floating-hscroll input[type=range]{flex:1;accent-color:#1D9E75}.floating-hscroll .hs-label{font-size:12px;color:#666;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
+.top-hscroll{height:18px;overflow-x:auto;overflow-y:hidden;border:1px solid #d0d0c8;border-bottom:none;background:#f7f7f4;border-radius:8px 8px 0 0;margin-bottom:-1px}.top-hscroll-inner{height:1px}.tbl-wrap.with-top-scroll{border-top-left-radius:0;border-top-right-radius:0}
+/* Result freeze: keep group columns visible while scrolling horizontally */
+#tab-result .data-tbl th:nth-child(1),#tab-result .data-tbl td:nth-child(1){position:sticky;left:0;z-index:110;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.06)}
+#tab-result .data-tbl th:nth-child(1){z-index:230;background:#f0f0eb}
+#tab-result .data-tbl th:nth-child(2),#tab-result .data-tbl td:nth-child(2){position:sticky;left:130px;z-index:105;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.04)}
+#tab-result .data-tbl th:nth-child(2){z-index:225;background:#f0f0eb}
+#tab-result tr.group-hdr td:nth-child(1),#tab-result tr.group-total td:nth-child(1),#tab-result tr.section-hdr td:nth-child(1),#tab-result tr.grand-total td:nth-child(1){position:static!important;box-shadow:none!important}
+/* Active table cue */
+.tbl-wrap.active-scroll-target{outline:2px solid #1D9E75;outline-offset:2px}
+</style>
+<script>
+// ===== V4.9.1: floating horizontal scrollbar + top scrollbars + no jump review =====
+(function(){
+  let activeWrap=null;
+  let syncLock=false;
+  function getVisibleWrap(){
+    if(activeWrap && document.body.contains(activeWrap) && activeWrap.offsetParent!==null) return activeWrap;
+    const activeTab=document.querySelector('#step-result [id^="tab-"]:not([style*="display: none"])');
+    const wraps=Array.from((activeTab||document).querySelectorAll('.tbl-wrap')).filter(w=>w.offsetParent!==null && w.scrollWidth>w.clientWidth+5);
+    if(wraps.length) return wraps[0];
+    return Array.from(document.querySelectorAll('.tbl-wrap')).find(w=>w.offsetParent!==null && w.scrollWidth>w.clientWidth+5) || null;
+  }
+  function setActive(w){
+    if(!w) return;
+    if(activeWrap && activeWrap!==w) activeWrap.classList.remove('active-scroll-target');
+    activeWrap=w; activeWrap.classList.add('active-scroll-target'); updateFloating();
+  }
+  function ensureFloating(){
+    if(document.getElementById('floating-hscroll')) return;
+    const el=document.createElement('div');
+    el.id='floating-hscroll'; el.className='floating-hscroll';
+    el.innerHTML='<button type="button" id="hs-left" title="Sang trái hết">⏮</button><input id="hs-range" type="range" min="0" max="0" value="0"><button type="button" id="hs-right" title="Sang phải hết">⏭</button><span class="hs-label" id="hs-label">Scroll ngang</span>';
+    document.body.appendChild(el);
+    document.getElementById('hs-left').onclick=()=>{const w=getVisibleWrap(); if(w){w.scrollLeft=0; updateFloating();}};
+    document.getElementById('hs-right').onclick=()=>{const w=getVisibleWrap(); if(w){w.scrollLeft=w.scrollWidth-w.clientWidth; updateFloating();}};
+    document.getElementById('hs-range').addEventListener('input',e=>{const w=getVisibleWrap(); if(w){w.scrollLeft=Number(e.target.value)||0; updateFloating();}});
+  }
+  function updateFloating(){
+    ensureFloating();
+    const bar=document.getElementById('floating-hscroll');
+    const range=document.getElementById('hs-range');
+    const label=document.getElementById('hs-label');
+    const w=getVisibleWrap();
+    if(!w || w.scrollWidth<=w.clientWidth+5){bar.style.display='none'; return;}
+    bar.style.display='flex';
+    const max=Math.max(0,w.scrollWidth-w.clientWidth);
+    range.max=String(max); range.value=String(Math.round(w.scrollLeft));
+    let tab=document.querySelector('.tab.active')?.innerText?.replace(/\s+\d+.*$/,'').trim()||'Bảng';
+    label.textContent=tab+' · '+Math.round(w.scrollLeft)+'/'+Math.round(max);
+  }
+  function enhanceTopScrolls(){
+    document.querySelectorAll('.tbl-wrap').forEach(w=>{
+      if(w.dataset.hscrollEnhanced==='1') return;
+      const table=w.querySelector('table'); if(!table) return;
+      const top=document.createElement('div'); top.className='top-hscroll'; top.innerHTML='<div class="top-hscroll-inner"></div>';
+      w.parentNode.insertBefore(top,w); w.classList.add('with-top-scroll');
+      const inner=top.firstElementChild;
+      const resize=()=>{inner.style.width=(w.scrollWidth||0)+'px';};
+      resize(); setTimeout(resize,150); setTimeout(resize,700);
+      top.addEventListener('scroll',()=>{if(syncLock)return; syncLock=true; w.scrollLeft=top.scrollLeft; syncLock=false; setActive(w); updateFloating();});
+      w.addEventListener('scroll',()=>{if(syncLock)return; syncLock=true; top.scrollLeft=w.scrollLeft; syncLock=false; setActive(w); updateFloating();});
+      w.addEventListener('mouseenter',()=>setActive(w));
+      w.addEventListener('mousedown',()=>setActive(w));
+      w.dataset.hscrollEnhanced='1';
+    });
+    updateFloating();
+  }
+  window.enhanceHorizontalNavigation=enhanceTopScrolls;
+  window.updateResultDashboardOnly=function(){
+    const old=document.querySelector('#tab-result .confidence-dashboard');
+    if(old && typeof renderConfidenceDashboard==='function'){
+      const tmp=document.createElement('div'); tmp.innerHTML=renderConfidenceDashboard();
+      const fresh=tmp.firstElementChild;
+      if(fresh) old.replaceWith(fresh);
+    }
+  };
+  // Patch common render functions to re-enhance after DOM rebuild.
+  ['renderResult','renderTabInput','renderTabManual','renderTabResult','renderTabLog','showTab'].forEach(name=>{
+    const fn=window[name];
+    if(typeof fn==='function' && !fn.__hscrollPatched){
+      window[name]=function(){const out=fn.apply(this,arguments); setTimeout(enhanceTopScrolls,30); return out;};
+      window[name].__hscrollPatched=true;
+    }
+  });
+  document.addEventListener('DOMContentLoaded',()=>{ensureFloating(); setInterval(enhanceTopScrolls,1500);});
+  setTimeout(()=>{ensureFloating(); enhanceTopScrolls();},500);
+})();
+</script>
+
+</body>
+</html>
